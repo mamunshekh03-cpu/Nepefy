@@ -1,0 +1,6 @@
+{
+  "name": "ClearLedger — Virtual USD Crypto Exchange",
+  "description": "Production-ready Virtual USD crypto trading, dual-wallet staking, P2P marketplace, IPO presale lots, and administrative market control platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
