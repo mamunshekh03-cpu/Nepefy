@@ -23,6 +23,15 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
 
   useEffect(() => {
     loadPresale().catch(() => {});
+    const onFocus = () => loadPresale().catch(() => {});
+    window.addEventListener('focus', onFocus);
+    const timer = setInterval(() => {
+      loadPresale().catch(() => {});
+    }, 5000);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   const handleBuyLots = async (round: PresaleRound) => {
