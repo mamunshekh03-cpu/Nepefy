@@ -55,24 +55,25 @@ export async function sendOtpEmail(params: {
 
   const isSignup = params.purpose === 'SIGNUP_OTP';
   const subject = isSignup
-    ? `Nepefy Email Verification OTP: ${params.code}`
-    : `Nepefy Password Recovery Code: ${params.code}`;
+    ? `${params.code} is your Nepify verification code`
+    : `${params.code} is your Nepify password reset code`;
   const validMinutes = isSignup ? 10 : 15;
-  const heading = isSignup ? 'Verify Your Email Address' : 'Reset Your Account Password';
+  const heading = isSignup ? 'Verify Your Email Address' : 'Reset Your Password';
   const intro = isSignup
-    ? 'Use the 6-digit verification OTP below to complete your Nepefy trading account registration.'
-    : 'Use the 6-digit recovery code below to verify your identity and set a new Nepefy password.';
+    ? 'Welcome to Nepify! Please use the 6-digit verification code below to verify your email address and activate your account.'
+    : 'We received a request to reset your Nepify account password. Use the verification code below to proceed.';
 
-  const textBody = `${heading}\n\n${intro}\n\nVerification Code: ${params.code}\nExpires in: ${validMinutes} minutes.\n\nIf you did not request this, please ignore this email.`;
+  const textBody = `${heading}\n\n${intro}\n\nVerification Code: ${params.code}\nThis code expires in ${validMinutes} minutes.\n\nIf you did not request this, please ignore this email.`;
   const htmlBody = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #0f172a;">
-      <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Nepefy Exchange</div>
-      <div style="font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 12px;">${heading}</div>
-      <p style="font-size: 13px; color: #475569; line-height: 1.6; margin: 0 0 20px;">${intro}</p>
-      <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 20px;">
-        <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #2563eb; font-family: monospace;">${params.code}</div>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 28px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #0f172a; line-height: 1.5;">
+      <div style="font-size: 20px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px; letter-spacing: -0.5px;">Nepify</div>
+      <div style="font-size: 16px; font-weight: 600; color: #0f172a; margin-bottom: 12px;">${heading}</div>
+      <p style="font-size: 14px; color: #475569; margin: 0 0 20px;">${intro}</p>
+      <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; text-align: center; margin-bottom: 20px;">
+        <span style="font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #2563eb; font-family: monospace;">${params.code}</span>
       </div>
-      <p style="font-size: 12px; color: #64748b; margin: 0;">This code expires in ${validMinutes} minutes. Never share this code with anyone.</p>
+      <p style="font-size: 12px; color: #64748b; margin: 0 0 8px;">This code will expire in ${validMinutes} minutes. Never share this code with anyone.</p>
+      <p style="font-size: 12px; color: #94a3b8; margin: 0;">If you didn't request this email, you can safely ignore it.</p>
     </div>
   `;
 
@@ -105,7 +106,7 @@ export async function sendOtpEmail(params: {
     const smtpFrom =
       smtp.isGmail ||
       (smtp.user.includes('@') && (/@resend\.dev/i.test(fromEmail) || /@nepefy\.app/i.test(fromEmail)))
-        ? `Nepify <${smtp.user}>`
+        ? `"Nepify" <${smtp.user}>`
         : fromEmail;
     await transporter.sendMail({
       from: smtpFrom,
@@ -113,6 +114,9 @@ export async function sendOtpEmail(params: {
       subject,
       text: textBody,
       html: htmlBody,
+      headers: {
+        'X-Entity-Ref-ID': `${Date.now()}-${params.code}`,
+      },
     });
   };
 
