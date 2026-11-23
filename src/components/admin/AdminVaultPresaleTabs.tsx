@@ -303,7 +303,8 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
             <input
               type="number"
               required
-              min="1"
+              min="0.01"
+              step="0.01"
               value={newLotPrice}
               onChange={(e) => setNewLotPrice(e.target.value)}
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
@@ -314,7 +315,8 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
             <input
               type="number"
               required
-              min="1"
+              min="0.000001"
+              step="any"
               value={newTokensPerLot}
               onChange={(e) => setNewTokensPerLot(e.target.value)}
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
@@ -325,7 +327,8 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
             <input
               type="number"
               required
-              min="1"
+              min="0.01"
+              step="0.01"
               value={newWinPayout}
               onChange={(e) => setNewWinPayout(e.target.value)}
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
@@ -338,6 +341,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                 type="number"
                 required
                 min="1"
+                step="1"
                 value={newTotalLots}
                 onChange={(e) => setNewTotalLots(e.target.value)}
                 className="w-full h-9 px-2.5 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
