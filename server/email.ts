@@ -81,22 +81,31 @@ export async function sendOtpEmail(params: {
   const errors: string[] = [];
 
   const attemptSmtpPort = async (portToUse: number) => {
-    const transporter = nodemailer.createTransport({
-      host: smtp.host,
-      port: portToUse,
-      secure: portToUse === 465,
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 10000,
-      auth: {
-        user: smtp.user,
-        pass: smtp.pass,
-      },
-    });
+    const transportOptions = smtp.isGmail
+      ? {
+          service: 'gmail',
+          auth: {
+            user: smtp.user,
+            pass: smtp.pass,
+          },
+        }
+      : {
+          host: smtp.host,
+          port: portToUse,
+          secure: portToUse === 465,
+          connectionTimeout: 8000,
+          greetingTimeout: 8000,
+          socketTimeout: 10000,
+          auth: {
+            user: smtp.user,
+            pass: smtp.pass,
+          },
+        };
+    const transporter = nodemailer.createTransport(transportOptions as any);
     const smtpFrom =
       smtp.isGmail ||
       (smtp.user.includes('@') && (/@resend\.dev/i.test(fromEmail) || /@nepefy\.app/i.test(fromEmail)))
-        ? `Nepefy <${smtp.user}>`
+        ? `Nepify <${smtp.user}>`
         : fromEmail;
     await transporter.sendMail({
       from: smtpFrom,

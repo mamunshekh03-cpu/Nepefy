@@ -939,13 +939,12 @@ async function startServer() {
 
     const emailRes = await sendOtpEmail({ to: emailRaw, code, purpose: 'SIGNUP_OTP' });
     const providerConfigured = isEmailProviderConfigured();
-    const allowOtpPreview =
-      process.env.ALLOW_OTP_PREVIEW === 'true' || (!providerConfigured && process.env.NODE_ENV !== 'production');
+    const allowOtpPreview = process.env.ALLOW_OTP_PREVIEW === 'true';
     if (!emailRes.delivered && !allowOtpPreview) {
       await db.prepare('UPDATE signup_otp_codes SET used = 1 WHERE LOWER(email) = ? AND used = 0').run(emailRaw);
       res.status(503).json({
         error: providerConfigured
-          ? `Could not send verification email (${emailRes.error || 'provider rejected delivery'}).`
+          ? `Could not send verification email (${emailRes.error || 'provider rejected delivery'}). Please check your email settings.`
           : 'Email verification service is not configured on the server (set RESEND_API_KEY or SMTP settings).',
       });
       return;
@@ -956,7 +955,7 @@ async function startServer() {
         : 'A 6-digit email verification OTP has been issued (valid for 10 minutes).',
       emailDelivered: emailRes.delivered,
       provider: emailRes.provider,
-      ...(emailRes.delivered || !allowOtpPreview ? {} : { verificationCodePreview: code }),
+      ...(allowOtpPreview ? { verificationCodePreview: code } : {}),
     });
   }));
 
@@ -1218,13 +1217,12 @@ async function startServer() {
 
     const emailRes = await sendOtpEmail({ to: user.email, code, purpose: 'PASSWORD_RESET' });
     const providerConfigured = isEmailProviderConfigured();
-    const allowOtpPreview =
-      process.env.ALLOW_OTP_PREVIEW === 'true' || (!providerConfigured && process.env.NODE_ENV !== 'production');
+    const allowOtpPreview = process.env.ALLOW_OTP_PREVIEW === 'true';
     if (!emailRes.delivered && !allowOtpPreview) {
       await db.prepare('UPDATE password_reset_codes SET used = 1 WHERE user_id = ? AND used = 0').run(user.id);
       res.status(503).json({
         error: providerConfigured
-          ? `Could not send recovery email (${emailRes.error || 'provider rejected delivery'}).`
+          ? `Could not send recovery email (${emailRes.error || 'provider rejected delivery'}). Please check your email settings.`
           : 'Password recovery email service is not configured on the server (set RESEND_API_KEY or SMTP settings).',
       });
       return;
@@ -1236,7 +1234,7 @@ async function startServer() {
         : 'A 6-digit verification code has been generated and expires in 15 minutes.',
       emailDelivered: emailRes.delivered,
       provider: emailRes.provider,
-      ...(emailRes.delivered || !allowOtpPreview ? {} : { verificationCodePreview: code }),
+      ...(allowOtpPreview ? { verificationCodePreview: code } : {}),
     });
   }));
 

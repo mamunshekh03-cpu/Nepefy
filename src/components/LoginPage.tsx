@@ -225,11 +225,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
                   <span>{infoNotice}</span>
                 </div>
-                {codePreview && (
-                  <div className="font-mono-tabular text-xs bg-white border border-emerald-200 rounded px-2.5 py-1 inline-block">
-                    Recovery Code: <strong className="tracking-widest text-slate-900">{codePreview}</strong>
-                  </div>
-                )}
               </div>
             )}
 
