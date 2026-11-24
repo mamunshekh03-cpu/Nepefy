@@ -61,6 +61,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({ initialSetti
   const [androidApkVersion, setAndroidApkVersion] = useState(s.androidApkVersion || '2.4.0');
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [checkingHealth, setCheckingHealth] = useState(false);
+  const [localNotice, setLocalNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const loadHealth = async () => {
     setCheckingHealth(true);
@@ -101,6 +102,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({ initialSetti
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalNotice(null);
     const rate = Math.max(0, Math.min(25, Number(penaltyPct) || 0)) / 100;
     runAction(async () => {
       await apiFetch('/api/admin/settings', {
@@ -125,7 +127,10 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({ initialSetti
           androidApkVersion: androidApkVersion.trim() || '2.4.0',
         }),
       });
+      setLocalNotice({ type: 'ok', text: 'Settings saved successfully! All fees, limits, and gateway IDs are now live.' });
       return 'Platform gateway, fee, limit, mobile APK, and maintenance settings updated live.';
+    }).catch((err: any) => {
+      setLocalNotice({ type: 'err', text: err?.message || 'Failed to save settings. Please try again.' });
     });
   };
 
@@ -151,6 +156,21 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({ initialSetti
           <span>Save Platform Settings</span>
         </button>
       </div>
+
+      {/* Local save notice */}
+      {localNotice && (
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium border ${
+          localNotice.type === 'ok'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          {localNotice.type === 'ok'
+            ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            : <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />}
+          <span className="flex-1">{localNotice.text}</span>
+          <button type="button" onClick={() => setLocalNotice(null)} className="text-xs underline opacity-70 hover:opacity-100 shrink-0">Dismiss</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         {/* Treasury Payment Gateway IDs */}

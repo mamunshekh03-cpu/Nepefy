@@ -5572,7 +5572,7 @@ async function startServer() {
 
     if (body.binancePayId !== undefined) {
       const val = String(body.binancePayId).trim().slice(0, 80);
-      if (val.length < 3) {
+      if (val.length > 0 && val.length < 3) {
         res.status(400).json({ error: 'Binance Pay ID must be at least 3 characters.' });
         return;
       }
@@ -5580,7 +5580,7 @@ async function startServer() {
     }
     if (body.bybitUid !== undefined) {
       const val = String(body.bybitUid).trim().slice(0, 80);
-      if (val.length < 3) {
+      if (val.length > 0 && val.length < 3) {
         res.status(400).json({ error: 'Bybit UID must be at least 3 characters.' });
         return;
       }
@@ -5660,6 +5660,17 @@ async function startServer() {
 
     const updatedSettings = await getPlatformSettings();
     setSpotFeeRates(updatedSettings.spotMakerFeePct, updatedSettings.spotTakerFeePct);
+
+    // Sync updated presale network fee to all OPEN/UPCOMING rounds
+    if (body.presaleNetworkFeeUsd !== undefined) {
+      const newFee = Number(body.presaleNetworkFeeUsd);
+      if (Number.isFinite(newFee) && newFee >= 0) {
+        await db.prepare(
+          "UPDATE presale_rounds SET network_fee = ? WHERE status IN ('OPEN', 'UPCOMING')"
+        ).run(newFee);
+      }
+    }
+
     res.json({ settings: updatedSettings });
   }));
 
