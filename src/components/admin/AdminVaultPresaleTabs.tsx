@@ -273,6 +273,16 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
     }
   };
 
+  const handleLotPriceChange = (val: string) => {
+    setNewLotPrice(val);
+    const lprice = Number(val) || 0;
+    const size = Number(newLotSize) || 0;
+    if (size > 0 && lprice > 0) {
+      const perShare = lprice / size;
+      setNewIssuePrice(perShare < 0.1 ? perShare.toFixed(4) : perShare.toFixed(2));
+    }
+  };
+
   const calcTotalLots = Number(newTotalLots) || 0;
   const calcLotPrice = Number(newLotPrice) || 0;
   const calcTotalIssue = calcTotalLots * calcLotPrice;
@@ -428,7 +438,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               min="0.01"
               step="0.01"
               value={newLotPrice}
-              onChange={(e) => setNewLotPrice(e.target.value)}
+              onChange={(e) => handleLotPriceChange(e.target.value)}
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-blue-300 bg-blue-50/20 font-bold text-blue-900 rounded-lg focus:outline-none focus:border-blue-600"
               placeholder="75.00"
             />
@@ -528,8 +538,12 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
             <tbody className="divide-y divide-slate-200 text-xs">
               {data.presaleRounds.map((r) => {
                 const fv = r.face_value ?? 10.0;
-                const mLot = r.lot_size ?? r.tokens_per_lot ?? 50;
-                const iPrice = r.issue_price ?? (r.lot_price / (mLot || 1));
+                const rawLot = r.lot_size && r.lot_size > 0 ? r.lot_size : (r.tokens_per_lot || 1);
+                const rawOffer = r.issue_price && r.issue_price > 0 ? r.issue_price : (r.lot_price / rawLot);
+                const isConsistent = Math.abs(rawLot * rawOffer - r.lot_price) <= 0.05;
+                const mLot = isConsistent ? rawLot : (r.tokens_per_lot || rawLot);
+                const iPrice = isConsistent ? rawOffer : (mLot > 0 ? r.lot_price / mLot : r.lot_price);
+                const iDecimals = iPrice > 0 && iPrice < 0.1 ? 4 : 2;
                 const totIssue = r.total_issue_size && r.total_issue_size > 0 ? r.total_issue_size : (r.total_lots * r.lot_price);
                 return (
                   <tr key={r.id} className="hover:bg-slate-50/60">
@@ -541,7 +555,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                       ${formatUsd(fv)}
                     </td>
                     <td className="py-3 px-3 text-right font-mono-tabular text-slate-700">
-                      ${formatUsd(iPrice)}
+                      ${formatUsd(iPrice, iDecimals)}
                     </td>
                     <td className="py-3 px-3 text-right font-mono-tabular font-medium text-blue-700">
                       {mLot} sh

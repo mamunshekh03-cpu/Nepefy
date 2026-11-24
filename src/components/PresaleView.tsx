@@ -357,8 +357,12 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               const exceedsRemaining = !isClosed && lots > remaining;
 
               const faceValue = r.face_value ?? 10.0;
-              const marketLot = r.lot_size ?? r.tokens_per_lot ?? 50;
-              const issuePrice = r.issue_price ?? (lotPrice / (marketLot || 1));
+              const rawMarketLot = r.lot_size && r.lot_size > 0 ? r.lot_size : (r.tokens_per_lot || 1);
+              const rawIssuePrice = r.issue_price && r.issue_price > 0 ? r.issue_price : (lotPrice / rawMarketLot);
+              const isSpecConsistent = Math.abs(rawMarketLot * rawIssuePrice - lotPrice) <= 0.05;
+              const marketLot = isSpecConsistent ? rawMarketLot : (r.tokens_per_lot || rawMarketLot);
+              const issuePrice = isSpecConsistent ? rawIssuePrice : (marketLot > 0 ? lotPrice / marketLot : lotPrice);
+              const issuePriceDecimals = issuePrice > 0 && issuePrice < 0.1 ? 4 : 2;
               const totalIssueSize = r.total_issue_size && r.total_issue_size > 0 ? r.total_issue_size : (r.total_lots * lotPrice);
               const tokensPerLot = r.tokens_per_lot ?? marketLot;
               const totalSharesForLots = lots * marketLot;
@@ -505,7 +509,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                               Issue / Offer Price
                             </div>
                             <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
-                              ${formatUsd(issuePrice)}
+                              ${formatUsd(issuePrice, issuePriceDecimals)}
                             </div>
                             <div className="text-[10px] text-slate-500">Per 1 Share / Token</div>
                           </div>
@@ -529,7 +533,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                             <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
                               ${formatUsd(lotPrice)}
                             </div>
-                            <div className="text-[10px] text-slate-500 font-mono-tabular">1 Lot = {marketLot} Sh × ${formatUsd(issuePrice)}</div>
+                            <div className="text-[10px] text-slate-500 font-mono-tabular">1 Lot = {marketLot} Sh × ${formatUsd(issuePrice, issuePriceDecimals)}</div>
                           </div>
 
                           {/* 5. Total Issue Size */}

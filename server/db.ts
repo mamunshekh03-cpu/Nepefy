@@ -1229,6 +1229,16 @@ export async function initDatabase(): Promise<void> {
   await ensureColumn('presale_rounds', 'min_lots', 'INTEGER NOT NULL DEFAULT 1');
   await ensureColumn('presale_rounds', 'max_lots', 'INTEGER NOT NULL DEFAULT 500');
 
+  // Backfill legacy presale_rounds rows where default lot_size/issue_price don't match lot_price
+  await db.exec(`
+    UPDATE presale_rounds
+    SET
+      lot_size = CASE WHEN tokens_per_lot >= 1 THEN CAST(ROUND(tokens_per_lot) AS INTEGER) ELSE 1 END,
+      issue_price = CASE WHEN tokens_per_lot > 0 THEN (lot_price / tokens_per_lot) ELSE lot_price END,
+      total_issue_size = CASE WHEN total_issue_size <= 0 THEN (total_lots * lot_price) ELSE total_issue_size END
+    WHERE ABS((lot_size * issue_price) - lot_price) > 0.05 AND tokens_per_lot > 0
+  `);
+
   // Ensure all Top 30 live market pairs exist
   const existingPairRows = (await db.prepare('SELECT symbol FROM market_pairs').all()) as { symbol: string }[];
   const existingPairSet = new Set(existingPairRows.map((r) => r.symbol));

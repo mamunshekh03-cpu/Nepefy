@@ -6782,7 +6782,10 @@ async function startServer() {
 
     const numFaceValue = Number(face_value) > 0 ? Number(face_value) : 10.0;
     const numLotSize = Math.floor(Number(lot_size)) > 0 ? Math.floor(Number(lot_size)) : Math.floor(numTokensPerLot) || 50;
-    const numIssuePrice = Number(issue_price) > 0 ? Number(issue_price) : Number((numLotPrice / numLotSize).toFixed(4));
+    const rawIssuePrice = Number(issue_price) > 0 ? Number(issue_price) : Number((numLotPrice / numLotSize).toFixed(6));
+    const numIssuePrice = Math.abs(numLotSize * rawIssuePrice - numLotPrice) > 0.02
+      ? Number((numLotPrice / numLotSize).toFixed(6))
+      : rawIssuePrice;
     const numTotalIssueSize = Number(total_issue_size) > 0 ? Number(total_issue_size) : Number((numTotalLots * numLotPrice).toFixed(2));
     const numMinLots = Math.floor(Number(min_lots)) >= 1 ? Math.floor(Number(min_lots)) : 1;
     const numMaxLots = Math.floor(Number(max_lots)) >= numMinLots ? Math.floor(Number(max_lots)) : Math.min(500, numTotalLots);
