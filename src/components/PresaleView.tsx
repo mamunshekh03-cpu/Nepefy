@@ -6,7 +6,6 @@ import {
   ShieldCheck,
   Sparkles,
   Ticket,
-  TrendingUp,
   AlertCircle,
   Clock,
   CheckCircle2,
@@ -65,7 +64,23 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
     setNotice(null);
     setBusyId(round.id);
     const lots = Math.max(1, Math.floor(Number(lotCounts[round.id] || 1)));
-    const totalCost = lots * round.lot_price + round.network_fee;
+    const remaining = Math.max(0, round.total_lots - round.sold_lots);
+    const lotPrice = Number(round.lot_price || 0);
+    const networkFee = Number(round.network_fee ?? 0.5);
+    const principal = Number((lots * lotPrice).toFixed(2));
+    const totalCost = Number((principal + networkFee).toFixed(2));
+
+    if (round.status !== 'OPEN' || remaining <= 0) {
+      setNotice({ type: 'err', text: 'This presale round is closed or sold out.' });
+      setBusyId(null);
+      return;
+    }
+
+    if (lots > remaining) {
+      setNotice({ type: 'err', text: `Only ${remaining} lot(s) remaining in this round.` });
+      setBusyId(null);
+      return;
+    }
 
     if (user.main_balance < totalCost) {
       setNotice({
@@ -83,7 +98,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
       });
       setNotice({
         type: 'ok',
-        text: `Successfully subscribed to ${lots} share(s) of ${round.token_symbol}! $${formatUsd(lots * round.lot_price)} principal + $${formatUsd(round.network_fee)} fixed network fee deducted.`,
+        text: `Successfully subscribed to ${lots} share(s) of ${round.token_symbol}! $${formatUsd(principal)} principal + $${formatUsd(networkFee)} fixed network fee deducted.`,
       });
       await Promise.all([loadPresale(false), onRefresh()]);
     } catch (err: any) {
@@ -196,7 +211,9 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               <Ticket className="w-4 h-4" />
             </div>
             <div>
-              <div className="font-semibold text-white">Fixed $0.50 Network Gas</div>
+              <div className="font-semibold text-white">
+                Fixed ${formatUsd(rounds[0]?.network_fee ?? 0.5)} Network Gas
+              </div>
               <div className="text-slate-400 mt-0.5">
                 Low flat network fee per subscription order, no hidden slippage or variable costs.
               </div>
@@ -269,13 +286,16 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               const currentCountRaw = lotCounts[r.id] ?? '1';
               const lots = Math.max(1, Math.floor(Number(currentCountRaw) || 1));
               const remaining = Math.max(0, r.total_lots - r.sold_lots);
-              const principal = lots * r.lot_price;
-              const totalCost = principal + r.network_fee;
+              const lotPrice = Number(r.lot_price || 0);
+              const networkFee = Number(r.network_fee ?? 0.5);
+              const principal = Number((lots * lotPrice).toFixed(2));
+              const totalCost = Number((principal + networkFee).toFixed(2));
               const percentSold = r.total_lots > 0 ? Math.min(100, Math.round((r.sold_lots / r.total_lots) * 100)) : 0;
-              const effectivePricePerToken = r.tokens_per_lot > 0 ? (r.lot_price / r.tokens_per_lot).toFixed(4) : '0.00';
-              const winMultiplier = r.lot_price > 0 ? (r.projected_win_payout / r.lot_price).toFixed(1) : '0';
+              const effectivePricePerToken = r.tokens_per_lot > 0 ? (lotPrice / r.tokens_per_lot).toFixed(4) : '0.00';
+              const winMultiplier = lotPrice > 0 ? (r.projected_win_payout / lotPrice).toFixed(1) : '0';
               const canAfford = user.main_balance >= totalCost;
               const isClosed = r.status !== 'OPEN' || remaining <= 0;
+              const exceedsRemaining = !isClosed && lots > remaining;
 
               // Helper for quick share buttons
               const setQuantity = (qty: number) => {
@@ -284,7 +304,8 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               };
 
               const setMaxAffordable = () => {
-                const maxByBalance = Math.floor((user.main_balance - r.network_fee) / r.lot_price);
+                if (lotPrice <= 0) return;
+                const maxByBalance = Math.floor((user.main_balance - networkFee) / lotPrice);
                 const maxAllowed = Math.min(remaining, Math.max(1, maxByBalance));
                 setLotCounts((prev) => ({ ...prev, [r.id]: String(maxAllowed) }));
               };
@@ -463,7 +484,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                             <button
                               type="button"
                               onClick={() => setQuantity(lots - 1)}
-                              disabled={lots <= 1}
+                              disabled={isClosed || lots <= 1}
                               className="px-3.5 h-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
                               title="Decrease 1 share"
                             >
@@ -473,15 +494,16 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                               id={`lot-input-${r.id}`}
                               type="number"
                               min="1"
-                              max={remaining}
+                              max={Math.max(1, remaining)}
+                              disabled={isClosed}
                               value={lotCounts[r.id] ?? '1'}
                               onChange={(e) => setLotCounts((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                              className="w-full h-full text-center font-bold text-slate-900 font-mono-tabular border-x border-slate-200 focus:outline-hidden focus:bg-blue-50/30 text-base"
+                              className="w-full h-full text-center font-bold text-slate-900 font-mono-tabular border-x border-slate-200 focus:outline-hidden focus:bg-blue-50/30 text-base disabled:bg-slate-100 disabled:text-slate-400"
                             />
                             <button
                               type="button"
                               onClick={() => setQuantity(lots + 1)}
-                              disabled={lots >= remaining}
+                              disabled={isClosed || lots >= remaining}
                               className="px-3.5 h-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
                               title="Increase 1 share"
                             >
@@ -495,7 +517,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                               <button
                                 key={preset}
                                 type="button"
-                                disabled={preset > remaining}
+                                disabled={isClosed || preset > remaining}
                                 onClick={() => setQuantity(preset)}
                                 className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
                                   lots === preset
@@ -509,8 +531,8 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                             <button
                               type="button"
                               onClick={setMaxAffordable}
-                              disabled={remaining <= 0}
-                              className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-colors ml-auto"
+                              disabled={isClosed || remaining <= 0}
+                              className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-colors ml-auto disabled:opacity-30 disabled:pointer-events-none"
                             >
                               Max by Balance
                             </button>
@@ -522,7 +544,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2 text-xs">
                         <div className="flex justify-between items-center text-slate-600">
                           <span className="flex items-center gap-1.5">
-                            <span>Principal Investment ({lots} Shares × ${formatUsd(r.lot_price)})</span>
+                            <span>Principal Investment ({lots} Shares × ${formatUsd(lotPrice)})</span>
                             <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded font-medium">
                               100% Refund Protected
                             </span>
@@ -538,7 +560,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                             <span className="text-[10px] text-slate-400">Non-refundable gas</span>
                           </span>
                           <span className="font-mono-tabular font-semibold text-slate-700">
-                            ${formatUsd(r.network_fee)}
+                            ${formatUsd(networkFee)}
                           </span>
                         </div>
 
@@ -551,7 +573,15 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           </span>
                         </div>
 
-                        {/* Balance Check Notice */}
+                        {/* Balance & Remaining Lot Check Notice */}
+                        {exceedsRemaining && (
+                          <div className="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-2 text-xs">
+                            <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                            <span>
+                              Requested <strong>{lots}</strong> shares, but only <strong>{remaining}</strong> share(s) remaining in this round.
+                            </span>
+                          </div>
+                        )}
                         {!canAfford && (
                           <div className="mt-2 p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2 text-xs">
                             <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
@@ -600,7 +630,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       {/* Submit / CTA Button */}
                       <button
                         type="button"
-                        disabled={busyId === r.id || isClosed || !canAfford}
+                        disabled={busyId === r.id || isClosed || exceedsRemaining || !canAfford}
                         onClick={() => handleBuyLots(r)}
                         className="w-full h-12 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
                       >
@@ -611,6 +641,8 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           </>
                         ) : isClosed ? (
                           <span>Offering Round Closed or Sold Out</span>
+                        ) : exceedsRemaining ? (
+                          <span>Exceeds Available Shares ({remaining} left)</span>
                         ) : !canAfford ? (
                           <span>Insufficient Balance (${formatUsd(user.main_balance)} available)</span>
                         ) : (
@@ -755,6 +787,9 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 font-bold text-slate-800">
                             {t.lots_count} {t.lots_count === 1 ? 'Lot' : 'Lots'}
                           </span>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {Number(((t.lots_count || 0) * (t.tokens_per_lot || 0)).toFixed(2))} {t.token_symbol}
+                          </div>
                         </td>
 
                         <td className="py-3.5 px-4 text-right font-mono-tabular font-semibold text-slate-900">
