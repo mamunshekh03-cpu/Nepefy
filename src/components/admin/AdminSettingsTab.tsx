@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Database, HardDrive, KeyRound, Mail, RefreshCw, Save, Server, Settings, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, CheckCircle2, Database, HardDrive, KeyRound, Loader2, Mail, RefreshCw, Save, Server, Settings, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import type { PlatformSettings } from '../../types';
 import type { RunActionFn } from './adminTypes';
@@ -61,7 +61,8 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({ initialSetti
   const [androidApkVersion, setAndroidApkVersion] = useState(s.androidApkVersion || '2.4.0');
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [checkingHealth, setCheckingHealth] = useState(false);
-  const [localNotice, setLocalNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [btnState, setBtnState] = useState<'idle' | 'saving' | 'ok' | 'err'>('idle');
+  const btnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadHealth = async () => {
     setCheckingHealth(true);
@@ -102,7 +103,9 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({ initialSetti
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalNotice(null);
+    if (btnState === 'saving') return;
+    setBtnState('saving');
+    if (btnTimerRef.current) clearTimeout(btnTimerRef.current);
     const rate = Math.max(0, Math.min(25, Number(penaltyPct) || 0)) / 100;
     runAction(async () => {
       await apiFetch('/api/admin/settings', {
@@ -127,10 +130,12 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({ initialSetti
           androidApkVersion: androidApkVersion.trim() || '2.4.0',
         }),
       });
-      setLocalNotice({ type: 'ok', text: 'Settings saved successfully! All fees, limits, and gateway IDs are now live.' });
+      setBtnState('ok');
+      btnTimerRef.current = setTimeout(() => setBtnState('idle'), 3000);
       return 'Platform gateway, fee, limit, mobile APK, and maintenance settings updated live.';
-    }).catch((err: any) => {
-      setLocalNotice({ type: 'err', text: err?.message || 'Failed to save settings. Please try again.' });
+    }).catch(() => {
+      setBtnState('err');
+      btnTimerRef.current = setTimeout(() => setBtnState('idle'), 3500);
     });
   };
 
@@ -150,27 +155,27 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({ initialSetti
 
         <button
           type="submit"
-          className="inline-flex items-center justify-center gap-2 h-9 px-4 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors whitespace-nowrap shrink-0"
+          disabled={btnState === 'saving'}
+          className={`inline-flex items-center justify-center gap-2 h-9 px-5 text-xs font-semibold rounded-lg transition-all duration-300 whitespace-nowrap shrink-0 ${
+            btnState === 'ok'
+              ? 'bg-emerald-600 text-white'
+              : btnState === 'err'
+              ? 'bg-red-600 text-white'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          } disabled:opacity-70 disabled:cursor-not-allowed`}
         >
-          <Save className="w-3.5 h-3.5" />
-          <span>Save Platform Settings</span>
+          {btnState === 'saving' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+          {btnState === 'ok'    && <CheckCircle2 className="w-3.5 h-3.5" />}
+          {btnState === 'err'   && <AlertTriangle className="w-3.5 h-3.5" />}
+          {btnState === 'idle'  && <Save className="w-3.5 h-3.5" />}
+          <span>
+            {btnState === 'saving' ? 'Saving…'
+              : btnState === 'ok'  ? 'Saved!'
+              : btnState === 'err' ? 'Failed — Retry'
+              : 'Save Platform Settings'}
+          </span>
         </button>
       </div>
-
-      {/* Local save notice */}
-      {localNotice && (
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium border ${
-          localNotice.type === 'ok'
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-            : 'bg-red-50 border-red-200 text-red-800'
-        }`}>
-          {localNotice.type === 'ok'
-            ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-            : <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />}
-          <span className="flex-1">{localNotice.text}</span>
-          <button type="button" onClick={() => setLocalNotice(null)} className="text-xs underline opacity-70 hover:opacity-100 shrink-0">Dismiss</button>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         {/* Treasury Payment Gateway IDs */}
