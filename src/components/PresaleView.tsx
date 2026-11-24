@@ -610,7 +610,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                             disabled={isClosed}
                             value={lotCounts[r.id] ?? '1'}
                             onChange={(e) => setLotCounts((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                            className="w-full h-full text-center font-bold text-slate-900 font-mono-tabular border-x border-slate-200 focus:outline-hidden focus:bg-blue-50/30 text-sm disabled:bg-slate-100 disabled:text-slate-400"
+                            className="w-full h-full text-center font-bold text-slate-900 font-mono-tabular border-x border-slate-200 focus:outline-hidden focus:bg-blue-50/30 text-sm disabled:bg-slate-100 disabled:text-slate-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           <button
                             type="button"
