@@ -331,8 +331,17 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
             </p>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div
+            className={
+              displayedRounds.length === 1
+                ? 'space-y-6'
+                : displayedRounds.length === 2
+                ? 'grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch'
+                : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-stretch'
+            }
+          >
             {displayedRounds.map((r) => {
+              const isSingle = displayedRounds.length === 1;
               const currentCountRaw = lotCounts[r.id] ?? '1';
               const lots = Math.max(1, Math.floor(Number(currentCountRaw) || 1));
               const remaining = Math.max(0, r.total_lots - r.sold_lots);
@@ -363,159 +372,163 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               return (
                 <div
                   key={r.id}
-                  className="border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                  className="border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col"
                 >
                   {/* Round Header Bar */}
-                  <div className="bg-slate-50/80 border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center shrink-0">
-                        <CryptoIcon symbol={r.token_symbol} size="lg" />
+                  <div className="bg-slate-50/80 border-b border-slate-200 px-4 sm:px-5 py-3.5 flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center shrink-0">
+                        <CryptoIcon symbol={r.token_symbol} size="md" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-bold text-slate-900 tracking-tight">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-base font-bold text-slate-900 tracking-tight">
                             {r.token_symbol}
                           </h3>
-                          <span className="text-xs text-slate-500 font-medium truncate max-w-[200px] sm:max-w-none">
+                          <span className="text-xs text-slate-500 font-medium truncate max-w-[140px] sm:max-w-[180px]">
                             • {r.token_name}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[11px] font-mono-tabular bg-slate-200 text-slate-700">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular bg-slate-200 text-slate-700">
                             {r.id}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Draw Scheduled: {formatDateTime(r.draw_date)}</span>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+                          <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">Draw: {formatDateTime(r.draw_date)}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0 ${
+                        r.status === 'OPEN'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : r.status === 'UPCOMING'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                      }`}
+                    >
                       <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                        className={`w-1.5 h-1.5 rounded-full ${
                           r.status === 'OPEN'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            ? 'bg-emerald-500 animate-pulse'
                             : r.status === 'UPCOMING'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                            ? 'bg-blue-500'
+                            : 'bg-slate-400'
                         }`}
-                      >
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            r.status === 'OPEN'
-                              ? 'bg-emerald-500 animate-pulse'
-                              : r.status === 'UPCOMING'
-                              ? 'bg-blue-500'
-                              : 'bg-slate-400'
-                          }`}
-                        />
-                        <span>
-                          {r.status === 'OPEN'
-                            ? 'Active / Open'
-                            : r.status === 'UPCOMING'
-                            ? 'Upcoming / Scheduled'
-                            : 'Closed / Previous'}
-                        </span>
+                      />
+                      <span>
+                        {r.status === 'OPEN'
+                          ? 'Active / Open'
+                          : r.status === 'UPCOMING'
+                          ? 'Upcoming'
+                          : 'Closed'}
                       </span>
-                    </div>
+                    </span>
                   </div>
 
-                  <div className="p-6 space-y-6">
-                    {/* Lot Supply Progress Bar */}
-                    <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-200/80 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-medium text-slate-700">
-                          Total Subscription Progress
-                        </span>
-                        <div className="font-mono-tabular text-slate-600 space-x-2">
-                          <span className="font-bold text-slate-900">{r.sold_lots}</span>
-                          <span className="text-slate-400">/</span>
-                          <span>{r.total_lots} Lots Subscribed</span>
-                          <span className="font-semibold text-blue-600">({percentSold}%)</span>
-                        </div>
-                      </div>
-                      <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-blue-600 to-indigo-600 h-full rounded-full transition-all duration-500"
-                          style={{ width: `${percentSold}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between items-center text-[11px] text-slate-500 pt-0.5">
-                        <span className="text-emerald-700 font-medium">
-                          {remaining > 0 ? `${remaining} Lots Remaining` : 'Sold Out'}
-                        </span>
-                        <span>Draw starts automatically upon round closure</span>
-                      </div>
-                    </div>
-
-                    {/* COMPLETE 1-SHARE / LOT INFORMATION BREAKDOWN */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Info className="w-4 h-4 text-blue-600" />
-                        <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                          1 Share Specifications &amp; Return Model
-                        </h4>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
-                        {/* 1. Share Unit Price */}
-                        <div className="border border-slate-200 rounded-xl p-3.5 bg-gradient-to-br from-white to-slate-50 shadow-xs">
-                          <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
-                            Share / Lot Price
-                          </div>
-                          <div className="mt-1 text-lg font-extrabold font-mono-tabular text-slate-900">
-                            ${formatUsd(lotPrice)}
-                          </div>
-                          <div className="mt-1 text-[11px] text-slate-500">
-                            Per 1 Share / Lot
+                  <div
+                    className={
+                      isSingle
+                        ? 'p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start'
+                        : 'p-4 sm:p-5 space-y-4 flex-1 flex flex-col justify-between'
+                    }
+                  >
+                    <div className={isSingle ? 'lg:col-span-7 space-y-4' : 'space-y-4'}>
+                      {/* Lot Supply Progress Bar */}
+                      <div className="bg-slate-50/70 rounded-xl p-3.5 border border-slate-200/80 space-y-1.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-medium text-slate-700">Subscription Progress</span>
+                          <div className="font-mono-tabular text-slate-600 space-x-1">
+                            <span className="font-bold text-slate-900">{r.sold_lots}</span>
+                            <span className="text-slate-400">/</span>
+                            <span>{r.total_lots}</span>
+                            <span className="font-semibold text-blue-600">({percentSold}%)</span>
                           </div>
                         </div>
+                        <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${percentSold}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-[11px] text-slate-500">
+                          <span className="text-emerald-700 font-medium">
+                            {remaining > 0 ? `${remaining} Lots Remaining` : 'Sold Out'}
+                          </span>
+                          <span>Auto-draw on close</span>
+                        </div>
+                      </div>
 
-                        {/* 2. Token Allocation */}
-                        <div className="border border-slate-200 rounded-xl p-3.5 bg-gradient-to-br from-white to-slate-50 shadow-xs">
-                          <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
-                            Token Yield
-                          </div>
-                          <div className="mt-1 text-lg font-extrabold font-mono-tabular text-blue-600">
-                            {r.tokens_per_lot} <span className="text-xs font-semibold text-slate-700">{r.token_symbol}</span>
-                          </div>
-                          <div className="mt-1 text-[11px] text-slate-500 font-mono-tabular">
-                            ~${effectivePricePerToken} / token
-                          </div>
+                      {/* COMPLETE 1-SHARE / LOT INFORMATION BREAKDOWN */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <Info className="w-3.5 h-3.5 text-blue-600" />
+                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                            1 Share Specifications &amp; Return Model
+                          </h4>
                         </div>
 
-                        {/* 3. Potential Win Cash Jackpot */}
-                        <div className="border border-emerald-200 rounded-xl p-3.5 bg-gradient-to-br from-emerald-50/50 to-white shadow-xs">
-                          <div className="text-[11px] font-medium text-emerald-800 uppercase tracking-wider flex items-center justify-between">
-                            <span>Win Cash Jackpot</span>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono-tabular">
-                              {winMultiplier}x Return
-                            </span>
+                        <div className="grid grid-cols-2 gap-2.5 text-left">
+                          {/* 1. Share Unit Price */}
+                          <div className="border border-slate-200 rounded-xl p-3 bg-gradient-to-br from-white to-slate-50">
+                            <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                              Share / Lot Price
+                            </div>
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-slate-900">
+                              ${formatUsd(lotPrice)}
+                            </div>
+                            <div className="text-[10px] text-slate-500">Per 1 Share / Lot</div>
                           </div>
-                          <div className="mt-1 text-lg font-extrabold font-mono-tabular text-emerald-700">
-                            +${formatUsd(r.projected_win_payout)}
-                          </div>
-                          <div className="mt-1 text-[11px] text-emerald-700 font-medium">
-                            Cash Prize into Claimable
-                          </div>
-                        </div>
 
-                        {/* 4. Guaranteed Non-Win Protection */}
-                        <div className="border border-blue-200 rounded-xl p-3.5 bg-gradient-to-br from-blue-50/40 to-white shadow-xs">
-                          <div className="text-[11px] font-medium text-blue-900 uppercase tracking-wider">
-                            Draw Loss Protection
+                          {/* 2. Token Allocation */}
+                          <div className="border border-slate-200 rounded-xl p-3 bg-gradient-to-br from-white to-slate-50">
+                            <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                              Token Yield
+                            </div>
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-blue-600">
+                              {r.tokens_per_lot}{' '}
+                              <span className="text-xs font-semibold text-slate-700">{r.token_symbol}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono-tabular">
+                              ~${effectivePricePerToken} / token
+                            </div>
                           </div>
-                          <div className="mt-1 text-lg font-extrabold font-mono-tabular text-blue-700">
-                            100% Refund
+
+                          {/* 3. Potential Win Cash Jackpot */}
+                          <div className="border border-emerald-200 rounded-xl p-3 bg-gradient-to-br from-emerald-50/50 to-white">
+                            <div className="text-[10px] font-medium text-emerald-800 uppercase tracking-wider flex items-center justify-between gap-1">
+                              <span className="truncate">Win Cash Jackpot</span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono-tabular shrink-0">
+                                {winMultiplier}x
+                              </span>
+                            </div>
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-emerald-700">
+                              +${formatUsd(r.projected_win_payout)}
+                            </div>
+                            <div className="text-[10px] text-emerald-700 font-medium">
+                              Into Claimable Wallet
+                            </div>
                           </div>
-                          <div className="mt-1 text-[11px] text-slate-600 font-mono-tabular">
-                            +${formatUsd(lotPrice)} back to Claimable
+
+                          {/* 4. Guaranteed Non-Win Protection */}
+                          <div className="border border-blue-200 rounded-xl p-3 bg-gradient-to-br from-blue-50/40 to-white">
+                            <div className="text-[10px] font-medium text-blue-900 uppercase tracking-wider">
+                              Draw Loss Protection
+                            </div>
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-blue-700">
+                              100% Refund
+                            </div>
+                            <div className="text-[10px] text-slate-600 font-mono-tabular">
+                              +${formatUsd(lotPrice)} to Claimable
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* REDESIGNED PURCHASE SUMMARY BOX (Active) or Status Info (Upcoming / Previous) */}
+                    <div className={isSingle ? 'lg:col-span-5' : ''}>
                     {r.status === 'UPCOMING' ? (
                       <div className="border border-blue-200 rounded-2xl bg-blue-50/50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-start gap-3">
@@ -555,175 +568,152 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                         </span>
                       </div>
                     ) : (
-                    <div className="border-2 border-slate-200 rounded-2xl bg-gradient-to-b from-slate-50 to-white p-5 sm:p-6 shadow-sm space-y-5">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                    <div className="border border-slate-200 rounded-2xl bg-gradient-to-b from-slate-50 to-white p-4 shadow-xs space-y-3.5">
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-                            <Ticket className="w-4 h-4" />
+                          <div className="w-6 h-6 rounded-md bg-blue-600 text-white flex items-center justify-center">
+                            <Ticket className="w-3.5 h-3.5" />
                           </div>
-                          <h4 className="text-sm font-bold text-slate-900">
+                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                             Purchase Summary
                           </h4>
                         </div>
-                        <span className="text-xs text-slate-500">
-                          Order Settlement via <strong className="text-slate-800">Main Balance</strong>
+                        <span className="text-[11px] text-slate-500">
+                          Via <strong className="text-slate-800">Main Balance</strong>
                         </span>
                       </div>
 
                       {/* Share Quantity Selector Controls */}
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                          <label htmlFor={`lot-input-${r.id}`}>Select Number of Shares (Lots):</label>
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700">
+                          <label htmlFor={`lot-input-${r.id}`}>Shares (Lots):</label>
                           <span className="text-slate-500 font-normal">
-                            Max allowed: <strong className="text-slate-800">{remaining} Lots</strong>
+                            Max: <strong className="text-slate-800">{remaining}</strong>
                           </span>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                          {/* Stepper with minus, input, plus */}
-                          <div className="flex items-center border border-slate-300 rounded-xl bg-white shadow-inner overflow-hidden w-full sm:w-56 h-11">
-                            <button
-                              type="button"
-                              onClick={() => setQuantity(lots - 1)}
-                              disabled={isClosed || lots <= 1}
-                              className="px-3.5 h-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-                              title="Decrease 1 share"
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                            <input
-                              id={`lot-input-${r.id}`}
-                              type="number"
-                              min="1"
-                              max={Math.max(1, remaining)}
-                              disabled={isClosed}
-                              value={lotCounts[r.id] ?? '1'}
-                              onChange={(e) => setLotCounts((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                              className="w-full h-full text-center font-bold text-slate-900 font-mono-tabular border-x border-slate-200 focus:outline-hidden focus:bg-blue-50/30 text-base disabled:bg-slate-100 disabled:text-slate-400"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setQuantity(lots + 1)}
-                              disabled={isClosed || lots >= remaining}
-                              className="px-3.5 h-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-                              title="Increase 1 share"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                          </div>
+                        <div className="flex items-center border border-slate-300 rounded-xl bg-white shadow-inner overflow-hidden w-full h-10">
+                          <button
+                            type="button"
+                            onClick={() => setQuantity(lots - 1)}
+                            disabled={isClosed || lots <= 1}
+                            className="px-3 h-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                            title="Decrease 1 share"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            id={`lot-input-${r.id}`}
+                            type="number"
+                            min="1"
+                            max={Math.max(1, remaining)}
+                            disabled={isClosed}
+                            value={lotCounts[r.id] ?? '1'}
+                            onChange={(e) => setLotCounts((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                            className="w-full h-full text-center font-bold text-slate-900 font-mono-tabular border-x border-slate-200 focus:outline-hidden focus:bg-blue-50/30 text-sm disabled:bg-slate-100 disabled:text-slate-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQuantity(lots + 1)}
+                            disabled={isClosed || lots >= remaining}
+                            className="px-3 h-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                            title="Increase 1 share"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
 
-                          {/* Quick Preset Buttons */}
-                          <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                            {[1, 5, 10, 25].map((preset) => (
-                              <button
-                                key={preset}
-                                type="button"
-                                disabled={isClosed || preset > remaining}
-                                onClick={() => setQuantity(preset)}
-                                className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
-                                  lots === preset
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                                } disabled:opacity-30 disabled:pointer-events-none`}
-                              >
-                                {preset} {preset === 1 ? 'Share' : 'Shares'}
-                              </button>
-                            ))}
+                        {/* Quick Preset Buttons */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {[1, 5, 10, 25].map((preset) => (
                             <button
+                              key={preset}
                               type="button"
-                              onClick={setMaxAffordable}
-                              disabled={isClosed || remaining <= 0}
-                              className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-colors ml-auto disabled:opacity-30 disabled:pointer-events-none"
+                              disabled={isClosed || preset > remaining}
+                              onClick={() => setQuantity(preset)}
+                              className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border transition-all ${
+                                lots === preset
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                  : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                              } disabled:opacity-30 disabled:pointer-events-none`}
                             >
-                              Max by Balance
+                              {preset}
                             </button>
-                          </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={setMaxAffordable}
+                            disabled={isClosed || remaining <= 0}
+                            className="px-2.5 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-colors ml-auto disabled:opacity-30 disabled:pointer-events-none"
+                          >
+                            Max
+                          </button>
                         </div>
                       </div>
 
                       {/* Detailed Financial Calculation Ledger */}
-                      <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-2 text-xs">
+                      <div className="bg-white rounded-xl border border-slate-200 p-3 space-y-1.5 text-xs">
                         <div className="flex justify-between items-center text-slate-600">
-                          <span className="flex items-center gap-1.5">
-                            <span>Principal Investment ({lots} Shares × ${formatUsd(lotPrice)})</span>
-                            <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded font-medium">
-                              100% Refund Protected
-                            </span>
-                          </span>
+                          <span>Principal ({lots} × ${formatUsd(lotPrice)})</span>
                           <span className="font-mono-tabular font-semibold text-slate-900">
                             ${formatUsd(principal)}
                           </span>
                         </div>
 
                         <div className="flex justify-between items-center text-slate-600">
-                          <span className="flex items-center gap-1.5">
-                            <span>Fixed Network Processing Fee</span>
-                            <span className="text-[10px] text-slate-400">Non-refundable gas</span>
-                          </span>
+                          <span>Network Fee (Fixed)</span>
                           <span className="font-mono-tabular font-semibold text-slate-700">
                             ${formatUsd(networkFee)}
                           </span>
                         </div>
 
-                        <div className="border-t border-slate-200 my-1 pt-2 flex justify-between items-center text-sm font-bold text-slate-900">
-                          <span className="flex items-center gap-1 text-slate-900">
-                            <span>Total Deduction (Main Balance)</span>
-                          </span>
-                          <span className="font-mono-tabular text-base text-blue-600">
+                        <div className="border-t border-slate-200 pt-1.5 flex justify-between items-center font-bold text-slate-900">
+                          <span>Total Deduction</span>
+                          <span className="font-mono-tabular text-sm text-blue-600">
                             ${formatUsd(totalCost)}
                           </span>
                         </div>
 
                         {/* Balance & Remaining Lot Check Notice */}
                         {exceedsRemaining && (
-                          <div className="mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-2 text-xs">
-                            <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                          <div className="mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-1.5 text-[11px]">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
                             <span>
-                              Requested <strong>{lots}</strong> shares, but only <strong>{remaining}</strong> share(s) remaining in this round.
+                              Only <strong>{remaining}</strong> share(s) left.
                             </span>
                           </div>
                         )}
                         {!canAfford && (
-                          <div className="mt-2 p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2 text-xs">
-                            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                          <div className="mt-1.5 p-2 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-1.5 text-[11px]">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
                             <span>
-                              Insufficient Main Balance: You have <strong>${formatUsd(user.main_balance)}</strong>, but need <strong>${formatUsd(totalCost)}</strong>.
+                              Low Main Balance (${formatUsd(user.main_balance)} available).
                             </span>
                           </div>
                         )}
                       </div>
 
-                      {/* Potential Draw Simulation Outcome Card */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3.5 space-y-1">
-                          <div className="font-bold text-emerald-900 flex items-center gap-1.5">
-                            <Trophy className="w-4 h-4 text-emerald-600" />
-                            <span>If Ticket Wins (Winning Outcome)</span>
+                      {/* Compact Potential Draw Outcomes */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-lg p-2.5">
+                          <div className="font-bold text-emerald-900 flex items-center gap-1">
+                            <Trophy className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span>If Win</span>
                           </div>
-                          <div className="text-slate-700">
-                            Receive{' '}
-                            <strong className="text-emerald-700 font-mono-tabular">
-                              +${formatUsd(lots * r.projected_win_payout)}
-                            </strong>{' '}
-                            cash prize directly in your Claimable Wallet plus{' '}
-                            <strong className="text-slate-900 font-mono-tabular">
-                              {lots * r.tokens_per_lot} {r.token_symbol}
-                            </strong>{' '}
-                            token allocation.
+                          <div className="text-slate-700 mt-0.5 font-mono-tabular">
+                            <strong className="text-emerald-700">+${formatUsd(lots * r.projected_win_payout)}</strong>{' '}
+                            &amp; {lots * r.tokens_per_lot} {r.token_symbol}
                           </div>
                         </div>
 
-                        <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3.5 space-y-1">
-                          <div className="font-bold text-blue-900 flex items-center gap-1.5">
-                            <ShieldCheck className="w-4 h-4 text-blue-600" />
-                            <span>If Not Drawn (Non-Win Outcome)</span>
+                        <div className="bg-blue-50/70 border border-blue-200/80 rounded-lg p-2.5">
+                          <div className="font-bold text-blue-900 flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3 text-blue-600 shrink-0" />
+                            <span>If Not Drawn</span>
                           </div>
-                          <div className="text-slate-700">
-                            100% Principal Refund:{' '}
-                            <strong className="text-blue-700 font-mono-tabular">
-                              +${formatUsd(principal)}
-                            </strong>{' '}
-                            safely credited back to your Claimable Wallet with zero principal risk.
+                          <div className="text-slate-700 mt-0.5 font-mono-tabular">
+                            <strong className="text-blue-700">+${formatUsd(principal)}</strong>{' '}
+                            100% Refund
                           </div>
                         </div>
                       </div>
@@ -733,19 +723,19 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                         type="button"
                         disabled={busyId === r.id || isClosed || exceedsRemaining || !canAfford}
                         onClick={() => handleBuyLots(r)}
-                        className="w-full h-12 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                        className="w-full h-11 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
                       >
                         {busyId === r.id ? (
                           <>
                             <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>Processing Presale Subscription...</span>
+                            <span>Processing...</span>
                           </>
                         ) : isClosed ? (
-                          <span>Offering Round Closed or Sold Out</span>
+                          <span>Closed / Sold Out</span>
                         ) : exceedsRemaining ? (
-                          <span>Exceeds Available Shares ({remaining} left)</span>
+                          <span>Exceeds Remaining ({remaining})</span>
                         ) : !canAfford ? (
-                          <span>Insufficient Balance (${formatUsd(user.main_balance)} available)</span>
+                          <span>Insufficient Balance</span>
                         ) : (
                           <>
                             <span>Subscribe {lots} Share(s) • ${formatUsd(totalCost)}</span>
@@ -755,6 +745,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       </button>
                     </div>
                     )}
+                    </div>
                   </div>
                 </div>
               );
