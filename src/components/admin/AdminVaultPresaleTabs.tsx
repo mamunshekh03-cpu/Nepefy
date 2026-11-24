@@ -244,43 +244,15 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
   runAction,
 }) => {
   const [newRoundStatus, setNewRoundStatus] = useState<'OPEN' | 'UPCOMING'>('OPEN');
-  const [newFaceValue, setNewFaceValue] = useState('10.00');
   const [newLotSize, setNewLotSize] = useState('50');
-  const [newIssuePrice, setNewIssuePrice] = useState('1.50');
   const [newListingDate, setNewListingDate] = useState(() => {
     const d = new Date(Date.now() + 30 * 86400000);
     return d.toISOString().split('T')[0];
   });
-  const [newMinLots, setNewMinLots] = useState('1');
-  const [newMaxLots, setNewMaxLots] = useState('100');
 
   const handleLotSizeChange = (val: string) => {
     setNewLotSize(val);
     setNewTokensPerLot(val);
-    const size = Number(val) || 0;
-    const iprice = Number(newIssuePrice) || 0;
-    if (size > 0 && iprice > 0) {
-      setNewLotPrice((size * iprice).toFixed(2));
-    }
-  };
-
-  const handleIssuePriceChange = (val: string) => {
-    setNewIssuePrice(val);
-    const iprice = Number(val) || 0;
-    const size = Number(newLotSize) || 0;
-    if (size > 0 && iprice > 0) {
-      setNewLotPrice((size * iprice).toFixed(2));
-    }
-  };
-
-  const handleLotPriceChange = (val: string) => {
-    setNewLotPrice(val);
-    const lprice = Number(val) || 0;
-    const size = Number(newLotSize) || 0;
-    if (size > 0 && lprice > 0) {
-      const perShare = lprice / size;
-      setNewIssuePrice(perShare < 0.1 ? perShare.toFixed(4) : perShare.toFixed(2));
-    }
   };
 
   const calcTotalLots = Number(newTotalLots) || 0;
@@ -288,6 +260,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
   const calcTotalIssue = calcTotalLots * calcLotPrice;
   const calcWinPayout = Number(newWinPayout) || 0;
   const winMultiplier = calcLotPrice > 0 ? (calcWinPayout / calcLotPrice).toFixed(1) : '0';
+  const adminNetworkFee = data.platformSettings?.presaleNetworkFeeUsd ?? 0.10;
 
   return (
     <div className="space-y-5">
@@ -301,17 +274,13 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               body: JSON.stringify({
                 token_symbol: newTokenSym,
                 token_name: newTokenName,
-                face_value: Number(newFaceValue) || 10.0,
                 lot_size: Number(newLotSize) || 50,
-                issue_price: Number(newIssuePrice) || 1.5,
-                lot_price: Number(newLotPrice) || 75.0,
+                lot_price: Number(newLotPrice) || 1.20,
                 tokens_per_lot: Number(newTokensPerLot) || Number(newLotSize) || 50,
                 projected_win_payout: Number(newWinPayout) || 180.0,
                 total_lots: Number(newTotalLots) || 100000,
                 total_issue_size: calcTotalIssue,
                 listing_date: newListingDate,
-                min_lots: Number(newMinLots) || 1,
-                max_lots: Number(newMaxLots) || 100,
                 status: newRoundStatus,
               }),
             });
@@ -331,7 +300,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Launch New Coin Presale / IPO Round</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Configure IPO Share valuation (Face Value, Market Lot, Offer Price, Win Payout, Target Size, and Listing Schedule).
+                Configure Share Price, Lot Size (tokens per share), Win Payout, and Total Shares (${formatUsd(adminNetworkFee)} network fee per share).
               </p>
             </div>
           </div>
@@ -383,25 +352,25 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
           </div>
         </div>
 
-        {/* Section 2: Valuation & Lot Specifications */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
+        {/* Section 2: Share Price, Lot Size & Pool */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Face Value ($/sh)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Share Price ($)</label>
             <input
               type="number"
               required
               min="0.01"
               step="0.01"
-              value={newFaceValue}
-              onChange={(e) => setNewFaceValue(e.target.value)}
-              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
-              placeholder="10.00"
+              value={newLotPrice}
+              onChange={(e) => setNewLotPrice(e.target.value)}
+              className="w-full h-9 px-3 text-xs font-mono-tabular border border-blue-300 bg-blue-50/20 font-bold text-blue-900 rounded-lg focus:outline-none focus:border-blue-600"
+              placeholder="1.50"
             />
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Par value</span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Cost per 1 share</span>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Market Lot (Shares)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Lot Size (Tokens / Share)</label>
             <input
               type="number"
               required
@@ -412,37 +381,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
               placeholder="50"
             />
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Shares / lot</span>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Issue Price ($/sh)</label>
-            <input
-              type="number"
-              required
-              min="0.0001"
-              step="any"
-              value={newIssuePrice}
-              onChange={(e) => handleIssuePriceChange(e.target.value)}
-              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
-              placeholder="1.50"
-            />
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Offer price</span>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Lot Price ($ / Lot)</label>
-            <input
-              type="number"
-              required
-              min="0.01"
-              step="0.01"
-              value={newLotPrice}
-              onChange={(e) => handleLotPriceChange(e.target.value)}
-              className="w-full h-9 px-3 text-xs font-mono-tabular border border-blue-300 bg-blue-50/20 font-bold text-blue-900 rounded-lg focus:outline-none focus:border-blue-600"
-              placeholder="75.00"
-            />
-            <span className="text-[10px] text-slate-500 mt-0.5 block">1 Lot subscription</span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Tokens received per share</span>
           </div>
 
           <div>
@@ -461,7 +400,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Total Lots (Issue)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Total Shares (Supply)</label>
             <input
               type="number"
               required
@@ -472,7 +411,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600 font-bold"
               placeholder="100000"
             />
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Offering pool</span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Total shares available</span>
           </div>
         </div>
 
@@ -484,18 +423,20 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               IPO Summary:
             </span>
             <span>
-              1 Lot = <strong className="text-slate-900 font-mono-tabular">{newLotSize} Shares</strong> @ <strong className="text-slate-900 font-mono-tabular">${Number(newIssuePrice || 0).toFixed(2)}</strong>
+              1 Share = <strong className="text-slate-900 font-mono-tabular">${formatUsd(calcLotPrice)}</strong> ({newLotSize} {newTokenSym.toUpperCase() || 'Tokens'})
             </span>
             <span className="text-slate-300 hidden sm:inline">|</span>
             <span>
-              Target Issue Size: <strong className="text-blue-700 font-mono-tabular">${formatUsd(calcTotalIssue)}</strong>
+              Total Issue Size: <strong className="text-blue-700 font-mono-tabular">${formatUsd(calcTotalIssue)}</strong>
             </span>
             <span className="text-slate-300 hidden sm:inline">|</span>
             <span>
               Win Return: <strong className="text-emerald-700 font-mono-tabular">{winMultiplier}x (+${formatUsd(calcWinPayout)})</strong>
             </span>
             <span className="text-slate-300 hidden sm:inline">|</span>
-            <span className="text-blue-600 font-medium">100% Principal Guaranteed</span>
+            <span>
+              Fee: <strong className="text-slate-900 font-mono-tabular">${formatUsd(adminNetworkFee)}/share</strong>
+            </span>
           </div>
 
           <button
@@ -524,26 +465,18 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
             <thead>
               <tr className="border-b border-slate-200 text-xs font-medium text-slate-500 bg-slate-50/70">
                 <th className="py-3 px-4">Token / Company</th>
-                <th className="py-3 px-3 text-right">Face Value</th>
-                <th className="py-3 px-3 text-right">Offer Price</th>
-                <th className="py-3 px-3 text-right">Market Lot</th>
-                <th className="py-3 px-3 text-right">Lot Price</th>
+                <th className="py-3 px-3 text-right">Share Price</th>
+                <th className="py-3 px-3 text-right">Lot Size</th>
                 <th className="py-3 px-3 text-right">Total Issue Size</th>
                 <th className="py-3 px-3 text-right">Win Payout</th>
-                <th className="py-3 px-4 text-right">Sold / Total Lots</th>
+                <th className="py-3 px-4 text-right">Sold / Total Shares</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Round Control</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-xs">
               {data.presaleRounds.map((r) => {
-                const fv = r.face_value ?? 10.0;
-                const rawLot = r.lot_size && r.lot_size > 0 ? r.lot_size : (r.tokens_per_lot || 1);
-                const rawOffer = r.issue_price && r.issue_price > 0 ? r.issue_price : (r.lot_price / rawLot);
-                const isConsistent = Math.abs(rawLot * rawOffer - r.lot_price) <= 0.05;
-                const mLot = isConsistent ? rawLot : (r.tokens_per_lot || rawLot);
-                const iPrice = isConsistent ? rawOffer : (mLot > 0 ? r.lot_price / mLot : r.lot_price);
-                const iDecimals = iPrice > 0 && iPrice < 0.1 ? 4 : 2;
+                const mLot = r.tokens_per_lot || r.lot_size || 50;
                 const totIssue = r.total_issue_size && r.total_issue_size > 0 ? r.total_issue_size : (r.total_lots * r.lot_price);
                 return (
                   <tr key={r.id} className="hover:bg-slate-50/60">
@@ -551,17 +484,11 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                       <div className="font-semibold text-slate-900">{r.token_symbol}</div>
                       <div className="text-slate-500 text-[11px] truncate max-w-[160px]">{r.token_name}</div>
                     </td>
-                    <td className="py-3 px-3 text-right font-mono-tabular text-slate-700">
-                      ${formatUsd(fv)}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono-tabular text-slate-700">
-                      ${formatUsd(iPrice, iDecimals)}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono-tabular font-medium text-blue-700">
-                      {mLot} sh
-                    </td>
                     <td className="py-3 px-3 text-right font-mono-tabular font-semibold text-slate-900">
                       ${formatUsd(r.lot_price)}
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono-tabular font-medium text-blue-700">
+                      {mLot} {r.token_symbol}
                     </td>
                     <td className="py-3 px-3 text-right font-mono-tabular text-slate-700">
                       ${formatUsd(totIssue)}

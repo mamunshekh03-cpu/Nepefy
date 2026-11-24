@@ -67,7 +67,8 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
     const lots = Math.max(1, Math.floor(Number(lotCounts[round.id] || 1)));
     const remaining = Math.max(0, round.total_lots - round.sold_lots);
     const lotPrice = Number(round.lot_price || 0);
-    const networkFee = Number(round.network_fee ?? 0.5);
+    const feePerShare = Number(round.network_fee ?? 0.10);
+    const networkFee = Number((lots * feePerShare).toFixed(2));
     const principal = Number((lots * lotPrice).toFixed(2));
     const totalCost = Number((principal + networkFee).toFixed(2));
 
@@ -179,7 +180,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-indigo-300 font-medium">
                 <Ticket className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Fixed ${formatUsd(rounds[0]?.network_fee ?? 0.5)} Network Fee</span>
+                <span>${formatUsd(rounds[0]?.network_fee ?? 0.10)} / Share Network Fee</span>
               </span>
             </div>
           </div>
@@ -346,7 +347,8 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               const lots = Math.max(1, Math.floor(Number(currentCountRaw) || 1));
               const remaining = Math.max(0, r.total_lots - r.sold_lots);
               const lotPrice = Number(r.lot_price || 0);
-              const networkFee = Number(r.network_fee ?? 0.5);
+              const feePerShare = Number(r.network_fee ?? 0.10);
+              const networkFee = Number((lots * feePerShare).toFixed(2));
               const principal = Number((lots * lotPrice).toFixed(2));
               const totalCost = Number((principal + networkFee).toFixed(2));
               const percentSold = r.total_lots > 0 ? Math.min(100, Math.round((r.sold_lots / r.total_lots) * 100)) : 0;
@@ -356,15 +358,8 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               const isClosed = r.status !== 'OPEN' || remaining <= 0;
               const exceedsRemaining = !isClosed && lots > remaining;
 
-              const faceValue = r.face_value ?? 10.0;
-              const rawMarketLot = r.lot_size && r.lot_size > 0 ? r.lot_size : (r.tokens_per_lot || 1);
-              const rawIssuePrice = r.issue_price && r.issue_price > 0 ? r.issue_price : (lotPrice / rawMarketLot);
-              const isSpecConsistent = Math.abs(rawMarketLot * rawIssuePrice - lotPrice) <= 0.05;
-              const marketLot = isSpecConsistent ? rawMarketLot : (r.tokens_per_lot || rawMarketLot);
-              const issuePrice = isSpecConsistent ? rawIssuePrice : (marketLot > 0 ? lotPrice / marketLot : lotPrice);
-              const issuePriceDecimals = issuePrice > 0 && issuePrice < 0.1 ? 4 : 2;
+              const marketLot = r.tokens_per_lot || r.lot_size || 50;
               const totalIssueSize = r.total_issue_size && r.total_issue_size > 0 ? r.total_issue_size : (r.total_lots * lotPrice);
-              const tokensPerLot = r.tokens_per_lot ?? marketLot;
               const totalSharesForLots = lots * marketLot;
 
               // Helper for quick share buttons
@@ -374,8 +369,9 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               };
 
               const setMaxAffordable = () => {
-                if (lotPrice <= 0) return;
-                const maxByBalance = Math.floor((user.main_balance - networkFee) / lotPrice);
+                const unitTotal = lotPrice + feePerShare;
+                if (unitTotal <= 0) return;
+                const maxByBalance = Math.floor(user.main_balance / unitTotal);
                 const maxAllowed = Math.min(remaining, Math.max(1, maxByBalance));
                 setLotCounts((prev) => ({ ...prev, [r.id]: String(maxAllowed) }));
               };
@@ -403,10 +399,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                             {r.id}
                           </span>
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 font-mono-tabular">
-                            FV: ${formatUsd(faceValue)}
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 font-mono-tabular">
-                            Lot: {marketLot} Sh
+                            Lot Size: {marketLot} {r.token_symbol}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
@@ -491,96 +484,76 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left">
-                          {/* 1. Face Value */}
-                          <div className="border border-slate-200 rounded-xl p-2.5 bg-gradient-to-br from-white to-slate-50">
-                            <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-                              Face Value (FV)
-                            </div>
-                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
-                              ${formatUsd(faceValue)}
-                            </div>
-                            <div className="text-[10px] text-slate-500">Nominal Par Value</div>
-                          </div>
-
-                          {/* 2. Offer / Issue Price */}
-                          <div className="border border-slate-200 rounded-xl p-2.5 bg-gradient-to-br from-white to-slate-50">
-                            <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-                              Issue / Offer Price
-                            </div>
-                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
-                              ${formatUsd(issuePrice, issuePriceDecimals)}
-                            </div>
-                            <div className="text-[10px] text-slate-500">Per 1 Share / Token</div>
-                          </div>
-
-                          {/* 3. Market Lot Size */}
-                          <div className="border border-blue-200/80 rounded-xl p-2.5 bg-gradient-to-br from-blue-50/30 to-white">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-left">
+                          {/* 1. Share Price */}
+                          <div className="border border-blue-200/80 rounded-xl p-3 bg-gradient-to-br from-blue-50/30 to-white">
                             <div className="text-[10px] font-medium text-blue-900 uppercase tracking-wider">
-                              Market Lot Size
+                              Share Price
                             </div>
-                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-blue-700">
-                              {marketLot} Shares
-                            </div>
-                            <div className="text-[10px] text-slate-500">Min 1 Application Lot</div>
-                          </div>
-
-                          {/* 4. Lot Subscription Price */}
-                          <div className="border border-blue-200/80 rounded-xl p-2.5 bg-gradient-to-br from-blue-50/40 to-white">
-                            <div className="text-[10px] font-medium text-blue-900 uppercase tracking-wider">
-                              Lot Subscription Price
-                            </div>
-                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-slate-900">
                               ${formatUsd(lotPrice)}
                             </div>
-                            <div className="text-[10px] text-slate-500 font-mono-tabular">1 Lot = {marketLot} Sh × ${formatUsd(issuePrice, issuePriceDecimals)}</div>
+                            <div className="text-[10px] text-slate-500">Per 1 Share</div>
                           </div>
 
-                          {/* 5. Total Issue Size */}
-                          <div className="border border-slate-200 rounded-xl p-2.5 bg-gradient-to-br from-white to-slate-50">
+                          {/* 2. Lot Size */}
+                          <div className="border border-slate-200 rounded-xl p-3 bg-gradient-to-br from-white to-slate-50">
+                            <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                              Lot Size
+                            </div>
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-blue-600 truncate">
+                              {marketLot} <span className="text-xs font-semibold text-slate-700">{r.token_symbol}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono-tabular">
+                              ~${effectivePricePerToken} / token
+                            </div>
+                          </div>
+
+                          {/* 3. Total Issue Size */}
+                          <div className="border border-slate-200 rounded-xl p-3 bg-gradient-to-br from-white to-slate-50">
                             <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
                               Total Issue Size
                             </div>
-                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-slate-900">
                               ${formatUsd(totalIssueSize)}
                             </div>
-                            <div className="text-[10px] text-slate-500">{r.total_lots.toLocaleString()} Total Lots</div>
+                            <div className="text-[10px] text-slate-500">{r.total_lots.toLocaleString()} Total Shares</div>
                           </div>
 
-                          {/* 6. Win Cash Jackpot */}
-                          <div className="border border-emerald-200 rounded-xl p-2.5 bg-gradient-to-br from-emerald-50/50 to-white">
+                          {/* 4. Win Cash Jackpot */}
+                          <div className="border border-emerald-200 rounded-xl p-3 bg-gradient-to-br from-emerald-50/50 to-white">
                             <div className="text-[10px] font-medium text-emerald-800 uppercase tracking-wider flex items-center justify-between gap-1">
                               <span className="truncate">Win Cash Jackpot</span>
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-mono-tabular shrink-0">
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono-tabular shrink-0">
                                 {winMultiplier}x
                               </span>
                             </div>
-                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-emerald-700">
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-emerald-700">
                               +${formatUsd(r.projected_win_payout)}
                             </div>
                             <div className="text-[10px] text-emerald-700 font-medium">Into Claimable Wallet</div>
                           </div>
 
-                          {/* 7. Guaranteed Loss Protection */}
-                          <div className="border border-blue-200 rounded-xl p-2.5 bg-gradient-to-br from-blue-50/40 to-white">
+                          {/* 5. Guaranteed Loss Protection */}
+                          <div className="border border-blue-200 rounded-xl p-3 bg-gradient-to-br from-blue-50/40 to-white">
                             <div className="text-[10px] font-medium text-blue-900 uppercase tracking-wider">
                               Draw Loss Protection
                             </div>
-                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-blue-700">
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-blue-700">
                               100% Refund
                             </div>
-                            <div className="text-[10px] text-slate-600 font-mono-tabular">+${formatUsd(lotPrice)} to Claimable</div>
+                            <div className="text-[10px] text-slate-600 font-mono-tabular">+${formatUsd(lotPrice)} / share</div>
                           </div>
 
-                          {/* 8. Token Yield */}
-                          <div className="border border-slate-200 rounded-xl p-2.5 bg-gradient-to-br from-white to-slate-50">
+                          {/* 6. Network Fee */}
+                          <div className="border border-slate-200 rounded-xl p-3 bg-gradient-to-br from-white to-slate-50">
                             <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-                              Token Allocation
+                              Network Fee
                             </div>
-                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-blue-600 truncate">
-                              {tokensPerLot} {r.token_symbol}
+                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-slate-900">
+                              ${formatUsd(feePerShare)}
                             </div>
-                            <div className="text-[10px] text-slate-500 font-mono-tabular">Credited upon listing</div>
+                            <div className="text-[10px] text-slate-500">Per 1 Share</div>
                           </div>
                         </div>
                       </div>
@@ -711,9 +684,9 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
 
                         {/* Shares / Lots breakdown strip */}
                         <div className="flex items-center justify-between text-xs px-3 py-2 rounded-xl bg-blue-50/70 border border-blue-100 text-blue-950 font-medium">
-                          <span>Subscribed Shares:</span>
+                          <span>Tokens Allocation (if win):</span>
                           <span className="font-bold font-mono-tabular text-blue-700">
-                            {lots} Lots × {marketLot} = {totalSharesForLots} {r.token_symbol} Shares
+                            {lots} Share(s) × {marketLot} = {totalSharesForLots} {r.token_symbol}
                           </span>
                         </div>
                       </div>
@@ -728,7 +701,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                         </div>
 
                         <div className="flex justify-between items-center text-slate-600">
-                          <span>Network Fee (Fixed)</span>
+                          <span>Network Fee ({lots} × ${formatUsd(feePerShare)})</span>
                           <span className="font-mono-tabular font-semibold text-slate-700">
                             ${formatUsd(networkFee)}
                           </span>
@@ -805,7 +778,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           <span>Insufficient Balance</span>
                         ) : (
                           <>
-                            <span>Subscribe {lots} Lot(s) ({totalSharesForLots} Shares) • ${formatUsd(totalCost)}</span>
+                            <span>Subscribe {lots} Share(s) • ${formatUsd(totalCost)}</span>
                             <ArrowRight className="w-4 h-4" />
                           </>
                         )}

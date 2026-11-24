@@ -4444,7 +4444,8 @@ async function startServer() {
           round.network_fee !== null && round.network_fee !== undefined
             ? Number(round.network_fee)
             : settings.presaleNetworkFeeUsd;
-        const feePaid = Number((Number.isFinite(rawFee) ? rawFee : 0.50).toFixed(2));
+        const feePerShare = Number((Number.isFinite(rawFee) ? rawFee : 0.10).toFixed(2));
+        const feePaid = Number((lots * feePerShare).toFixed(2));
         const totalCost = Number((principalPaid + feePaid).toFixed(2));
 
         const user = (await db.prepare('SELECT * FROM users WHERE id = ?').get(userId)) as any;
