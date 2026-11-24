@@ -6098,8 +6098,8 @@ async function startServer() {
 
   app.post('/api/admin/presale/rounds/:id/status', requireAdmin, ah(async (req, res) => {
     const { status } = req.body || {};
-    if (!['OPEN', 'CLOSED'].includes(status)) {
-      res.status(400).json({ error: 'Round status must be OPEN or CLOSED' });
+    if (!['UPCOMING', 'OPEN', 'CLOSED'].includes(status)) {
+      res.status(400).json({ error: 'Round status must be UPCOMING, OPEN, or CLOSED' });
       return;
     }
     const round = (await db.prepare('SELECT * FROM presale_rounds WHERE id = ?').get(req.params.id)) as any;
@@ -6730,13 +6730,14 @@ async function startServer() {
   }));
 
   app.post('/api/admin/presale/rounds', requireAdmin, ah(async (req, res) => {
-    const { token_symbol, token_name, lot_price, tokens_per_lot, projected_win_payout, total_lots } = req.body || {};
+    const { token_symbol, token_name, lot_price, tokens_per_lot, projected_win_payout, total_lots, status } = req.body || {};
     const cleanSym = String(token_symbol || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
     const cleanName = String(token_name || '').trim().slice(0, 64);
     const numLotPrice = Number(lot_price);
     const numTokensPerLot = Number(tokens_per_lot);
     const numWinPayout = Number(projected_win_payout);
     const numTotalLots = Math.floor(Number(total_lots));
+    const initialStatus = status === 'UPCOMING' ? 'UPCOMING' : 'OPEN';
 
     if (!cleanSym || cleanSym.length < 2 || !cleanName) {
       res.status(400).json({ error: 'Valid token symbol and name are required' });
@@ -6759,7 +6760,7 @@ async function startServer() {
     const drawDate = new Date(Date.now() + 30 * 86400000).toISOString();
     await db.prepare(`
       INSERT INTO presale_rounds (id, token_symbol, token_name, lot_price, network_fee, tokens_per_lot, projected_win_payout, total_lots, sold_lots, draw_date, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'OPEN', ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
     `).run(
       id,
       cleanSym,
@@ -6770,6 +6771,7 @@ async function startServer() {
       Number(numWinPayout.toFixed(2)),
       numTotalLots,
       drawDate,
+      initialStatus,
       new Date().toISOString()
     );
 

@@ -242,6 +242,8 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
   filteredPresaleTickets,
   runAction,
 }) => {
+  const [newRoundStatus, setNewRoundStatus] = React.useState<'OPEN' | 'UPCOMING'>('OPEN');
+
   return (
     <div className="space-y-5">
       {/* Launch New Presale Round Form */}
@@ -258,22 +260,36 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                 tokens_per_lot: Number(newTokensPerLot),
                 projected_win_payout: Number(newWinPayout),
                 total_lots: Number(newTotalLots),
+                status: newRoundStatus,
               }),
             });
             const createdSym = newTokenSym.toUpperCase();
             setNewTokenSym('');
             setNewTokenName('');
-            return `Launched new Coin Presale round (${createdSym}).`;
+            return `Launched new Coin Presale round (${createdSym}) as ${newRoundStatus}.`;
           });
         }}
         className="border border-slate-200 rounded-xl bg-white p-5 space-y-4"
       >
-        <div className="pb-3 border-b border-slate-200">
-          <h2 className="text-sm font-semibold text-slate-900">Launch New Coin Presale Round</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Configure lot allocation, token yield per lot, and projected winning payout ($
-            {formatUsd(data.platformSettings?.presaleNetworkFeeUsd ?? 0.5)} fixed network fee per ticket).
-          </p>
+        <div className="pb-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Launch New Coin Presale Round</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Configure lot allocation, token yield per lot, and projected winning payout ($
+              {formatUsd(data.platformSettings?.presaleNetworkFeeUsd ?? 0.5)} fixed network fee per ticket).
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-500 font-medium">Initial Status:</span>
+            <select
+              value={newRoundStatus}
+              onChange={(e) => setNewRoundStatus(e.target.value as 'OPEN' | 'UPCOMING')}
+              className="h-8 px-2.5 border border-slate-200 rounded-lg bg-slate-50 font-semibold text-slate-800 focus:outline-none focus:border-blue-600"
+            >
+              <option value="OPEN">OPEN (Active IPO)</option>
+              <option value="UPCOMING">UPCOMING (Scheduled)</option>
+            </select>
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 items-end">
           <div>
@@ -391,25 +407,72 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                     {r.sold_lots} / {r.total_lots}
                   </td>
                   <td className="py-3 px-4 font-medium">
-                    <span className={r.status === 'OPEN' ? 'text-emerald-600' : 'text-slate-400'}>{r.status}</span>
+                    <span
+                      className={
+                        r.status === 'OPEN'
+                          ? 'text-emerald-600'
+                          : r.status === 'UPCOMING'
+                          ? 'text-blue-600'
+                          : 'text-slate-400'
+                      }
+                    >
+                      {r.status}
+                    </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        runAction(async () => {
-                          const next = r.status === 'OPEN' ? 'CLOSED' : 'OPEN';
-                          await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
-                            method: 'POST',
-                            body: JSON.stringify({ status: next }),
-                          });
-                          return `Presale round ${r.token_symbol} set to ${next}.`;
-                        })
-                      }
-                      className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-medium whitespace-nowrap"
-                    >
-                      {r.status === 'OPEN' ? 'Close Round' : 'Reopen Round'}
-                    </button>
+                    <div className="inline-flex items-center gap-1.5">
+                      {r.status !== 'OPEN' && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            runAction(async () => {
+                              await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
+                                method: 'POST',
+                                body: JSON.stringify({ status: 'OPEN' }),
+                              });
+                              return `Presale round ${r.token_symbol} set to OPEN (Active).`;
+                            })
+                          }
+                          className="px-2.5 py-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-medium whitespace-nowrap"
+                        >
+                          Open IPO
+                        </button>
+                      )}
+                      {r.status !== 'UPCOMING' && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            runAction(async () => {
+                              await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
+                                method: 'POST',
+                                body: JSON.stringify({ status: 'UPCOMING' }),
+                              });
+                              return `Presale round ${r.token_symbol} set to UPCOMING.`;
+                            })
+                          }
+                          className="px-2.5 py-1.5 border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-medium whitespace-nowrap"
+                        >
+                          Set Upcoming
+                        </button>
+                      )}
+                      {r.status !== 'CLOSED' && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            runAction(async () => {
+                              await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
+                                method: 'POST',
+                                body: JSON.stringify({ status: 'CLOSED' }),
+                              });
+                              return `Presale round ${r.token_symbol} set to CLOSED (Previous).`;
+                            })
+                          }
+                          className="px-2.5 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-medium whitespace-nowrap"
+                        >
+                          Close Round
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
