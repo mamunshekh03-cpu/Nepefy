@@ -3802,19 +3802,24 @@ async function startServer() {
 
               if (delta > 0) {
                 batchCredited = Number((batchCredited + delta).toFixed(2));
-                await db.prepare(`
-                  INSERT INTO staking_daily_logs (id, user_id, position_id, package_code, day_number, daily_amount, total_accrued, credited_at)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                `).run(
-                  generateId('SDL'),
-                  pos.user_id,
-                  pos.id,
-                  pos.package_code,
-                  dayNum,
-                  delta,
-                  accruedForPosition,
-                  creditedAt
-                );
+                const existingLog = await db
+                  .prepare('SELECT id FROM staking_daily_logs WHERE position_id = ? AND day_number = ?')
+                  .get(pos.id, dayNum);
+                if (!existingLog) {
+                  await db.prepare(`
+                    INSERT INTO staking_daily_logs (id, user_id, position_id, package_code, day_number, daily_amount, total_accrued, credited_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                  `).run(
+                    generateId('SDL'),
+                    pos.user_id,
+                    pos.id,
+                    pos.package_code,
+                    dayNum,
+                    delta,
+                    accruedForPosition,
+                    creditedAt
+                  );
+                }
               }
             }
 
@@ -4040,13 +4045,19 @@ async function startServer() {
         const principalReturned = isCompleted ? Number(pos.principal_amount) : 0;
         const totalCredited = Number((profitPayout + principalReturned).toFixed(2));
 
-        let nextWalletBalance: number;
+        let nextMainBalance = Number(user.main_balance || 0);
+        let nextClaimableBalance = Number(user.claimable_balance || 0);
+
         if (targetWallet === 'MAIN') {
-          nextWalletBalance = Number((Number(user.main_balance || 0) + totalCredited).toFixed(2));
-          await db.prepare('UPDATE users SET main_balance = ? WHERE id = ?').run(nextWalletBalance, userId);
+          nextMainBalance = Number((nextMainBalance + totalCredited).toFixed(2));
+          await db.prepare('UPDATE users SET main_balance = ? WHERE id = ?').run(nextMainBalance, userId);
         } else {
-          nextWalletBalance = Number((Number(user.claimable_balance || 0) + totalCredited).toFixed(2));
-          await db.prepare('UPDATE users SET claimable_balance = ? WHERE id = ?').run(nextWalletBalance, userId);
+          if (principalReturned > 0) {
+            nextMainBalance = Number((nextMainBalance + principalReturned).toFixed(2));
+            await db.prepare('UPDATE users SET main_balance = ? WHERE id = ?').run(nextMainBalance, userId);
+          }
+          nextClaimableBalance = Number((nextClaimableBalance + profitPayout).toFixed(2));
+          await db.prepare('UPDATE users SET claimable_balance = ? WHERE id = ?').run(nextClaimableBalance, userId);
         }
 
         const nextTotalProfitPaid = Number((Number(pos.total_profit_paid || 0) + profitPayout).toFixed(2));
@@ -4063,15 +4074,38 @@ async function startServer() {
             WHERE id = ?
           `).run(nextTotalProfitPaid, nextMonthsPaid, nextQuartersPaid, nextAccruedDays, pos.id);
 
-          await appendLedger(
-            userId,
-            targetWallet,
-            'STAKING_PAYOUT',
-            totalCredited,
-            nextWalletBalance,
-            pos.id,
-            `Final Monthly Profit (${monthsDue} mo) + Principal Release (${pos.package_code})`
-          );
+          if (targetWallet === 'MAIN') {
+            await appendLedger(
+              userId,
+              'MAIN',
+              'STAKING_PAYOUT',
+              totalCredited,
+              nextMainBalance,
+              pos.id,
+              `Final Monthly Profit ($${profitPayout.toFixed(2)}) + Principal Release ($${principalReturned.toFixed(2)}) (${pos.package_code})`
+            );
+          } else {
+            if (principalReturned > 0) {
+              await appendLedger(
+                userId,
+                'MAIN',
+                'STAKING_PAYOUT',
+                principalReturned,
+                nextMainBalance,
+                pos.id,
+                `Principal Release ($${principalReturned.toFixed(2)}) on Vault Maturity (${pos.package_code})`
+              );
+            }
+            await appendLedger(
+              userId,
+              'CLAIMABLE',
+              'STAKING_PAYOUT',
+              profitPayout,
+              nextClaimableBalance,
+              pos.id,
+              `Final Monthly Profit (${monthsDue} mo · $${profitPayout.toFixed(2)}) (${pos.package_code})`
+            );
+          }
         } else {
           const nextPayoutIso = new Date(nextPayoutMs + monthsDue * THIRTY_DAYS_MS).toISOString();
           await db.prepare(`
@@ -4085,7 +4119,7 @@ async function startServer() {
             targetWallet,
             'STAKING_PAYOUT',
             profitPayout,
-            nextWalletBalance,
+            targetWallet === 'MAIN' ? nextMainBalance : nextClaimableBalance,
             pos.id,
             `Monthly Staking Profit Withdrawal (${monthsDue} mo · ${pos.package_code} @ ${pos.annual_roi_pct}% APR)`
           );
@@ -4138,7 +4172,8 @@ async function startServer() {
         let vaultsProcessed = 0;
 
         const user = (await db.prepare('SELECT * FROM users WHERE id = ?').get(userId)) as any;
-        let runningWallet = Number(targetWallet === 'MAIN' ? user.main_balance || 0 : user.claimable_balance || 0);
+        let runningMain = Number(user.main_balance || 0);
+        let runningClaimable = Number(user.claimable_balance || 0);
 
         for (const pos of activePositions) {
           const monthsPaid = Number(pos.months_paid || 0);
@@ -4154,9 +4189,46 @@ async function startServer() {
           const nextQuartersPaid = Math.min(Number(pos.total_quarters || 0), Math.floor(nextMonthsPaid / 3));
           const isCompleted = nextMonthsPaid >= durationMonths;
           const principalReturned = isCompleted ? Number(pos.principal_amount) : 0;
-          const totalForVault = Number((profitPayout + principalReturned).toFixed(2));
 
-          runningWallet = Number((runningWallet + totalForVault).toFixed(2));
+          if (targetWallet === 'MAIN') {
+            const totalForVault = Number((profitPayout + principalReturned).toFixed(2));
+            runningMain = Number((runningMain + totalForVault).toFixed(2));
+            await appendLedger(
+              userId,
+              'MAIN',
+              'STAKING_PAYOUT',
+              totalForVault,
+              runningMain,
+              pos.id,
+              isCompleted
+                ? `Final Monthly Profit ($${profitPayout.toFixed(2)}) + Principal Release ($${principalReturned.toFixed(2)}) (${pos.package_code})`
+                : `Monthly Staking Profit Withdrawal (${monthsDue} mo · ${pos.package_code} @ ${pos.annual_roi_pct}% APR)`
+            );
+          } else {
+            if (principalReturned > 0) {
+              runningMain = Number((runningMain + principalReturned).toFixed(2));
+              await appendLedger(
+                userId,
+                'MAIN',
+                'STAKING_PAYOUT',
+                principalReturned,
+                runningMain,
+                pos.id,
+                `Principal Release ($${principalReturned.toFixed(2)}) on Vault Maturity (${pos.package_code})`
+              );
+            }
+            runningClaimable = Number((runningClaimable + profitPayout).toFixed(2));
+            await appendLedger(
+              userId,
+              'CLAIMABLE',
+              'STAKING_PAYOUT',
+              profitPayout,
+              runningClaimable,
+              pos.id,
+              `Monthly Staking Profit Withdrawal (${monthsDue} mo · ${pos.package_code} @ ${pos.annual_roi_pct}% APR)`
+            );
+          }
+
           totalProfitCredited = Number((totalProfitCredited + profitPayout).toFixed(2));
           totalPrincipalReturned = Number((totalPrincipalReturned + principalReturned).toFixed(2));
           vaultsProcessed++;
@@ -4182,29 +4254,13 @@ async function startServer() {
               WHERE id = ?
             `).run(nextTotalProfitPaid, nextMonthsPaid, nextQuartersPaid, nextAccruedDays, remainingAccruedProfit, nextPayoutIso, pos.id);
           }
-
-          await appendLedger(
-            userId,
-            targetWallet,
-            'STAKING_PAYOUT',
-            totalForVault,
-            runningWallet,
-            pos.id,
-            isCompleted
-              ? `Final Monthly Profit (${monthsDue} mo) + Principal Release (${pos.package_code})`
-              : `Monthly Staking Profit Withdrawal (${monthsDue} mo · ${pos.package_code} @ ${pos.annual_roi_pct}% APR)`
-          );
         }
 
         if (vaultsProcessed === 0) {
           throw new Error('No unlocked monthly profit ready yet. Daily profits unlock after each 30-day cycle.');
         }
 
-        if (targetWallet === 'MAIN') {
-          await db.prepare('UPDATE users SET main_balance = ? WHERE id = ?').run(runningWallet, userId);
-        } else {
-          await db.prepare('UPDATE users SET claimable_balance = ? WHERE id = ?').run(runningWallet, userId);
-        }
+        await db.prepare('UPDATE users SET main_balance = ?, claimable_balance = ? WHERE id = ?').run(runningMain, runningClaimable, userId);
 
         const nextProfitBalance = await recomputeUserProfitBalance(userId);
         const updatedUser = await db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
@@ -5085,14 +5141,20 @@ async function startServer() {
       `)
       .all();
 
-    const staking = await db
+    const rawStaking = (await db
       .prepare(`
         SELECT s.*, u.full_name as user_name, u.email as user_email
         FROM staking_positions s
         JOIN users u ON s.user_id = u.id
         ORDER BY s.created_at DESC
       `)
-      .all();
+      .all()) as any[];
+    const platformSettings = await getPlatformSettings();
+    const staking = rawStaking.map((s) => ({
+      ...enrichStakingPosition(s, platformSettings.stakingEmergencyPenaltyRate),
+      user_name: s.user_name,
+      user_email: s.user_email,
+    }));
 
     const presaleRounds = await db.prepare('SELECT * FROM presale_rounds ORDER BY created_at DESC').all();
     const presaleTickets = await db
@@ -5489,7 +5551,7 @@ async function startServer() {
       transactions,
       kycSubmissions,
       auditLogs,
-      platformSettings: await getPlatformSettings(),
+      platformSettings,
       projectSummary,
       supportUnreadCount: Number(supportUnreadRow?.cnt || 0),
     });
@@ -6553,17 +6615,23 @@ async function startServer() {
           ? new Date(currentNextPayoutMs - ONE_DAY_MS).toISOString()
           : pos.next_payout_at;
 
+        const shiftedNextDailyIso = new Date(Date.now() + ONE_DAY_MS).toISOString();
         await db.prepare(`
           UPDATE staking_positions
-          SET accrued_days = ?, accrued_profit = ?, next_payout_at = ?
+          SET accrued_days = ?, accrued_profit = ?, next_payout_at = ?, next_daily_accrual_at = ?
           WHERE id = ?
-        `).run(nextDay, newAccruedProfit, shiftedNextPayoutIso, pos.id);
+        `).run(nextDay, newAccruedProfit, shiftedNextPayoutIso, shiftedNextDailyIso, pos.id);
 
         if (dailyDelta > 0) {
-          await db.prepare(`
-            INSERT INTO staking_daily_logs (id, user_id, position_id, package_code, day_number, daily_amount, total_accrued, credited_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(generateId('SDL'), pos.user_id, pos.id, pos.package_code, nextDay, dailyDelta, newAccruedProfit, nowIso);
+          const existingLog = await db
+            .prepare('SELECT id FROM staking_daily_logs WHERE position_id = ? AND day_number = ?')
+            .get(pos.id, nextDay);
+          if (!existingLog) {
+            await db.prepare(`
+              INSERT INTO staking_daily_logs (id, user_id, position_id, package_code, day_number, daily_amount, total_accrued, credited_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(generateId('SDL'), pos.user_id, pos.id, pos.package_code, nextDay, dailyDelta, newAccruedProfit, nowIso);
+          }
 
           const cycleDay = nextDay % 30 === 0 ? 30 : nextDay % 30;
           notificationsToSend.push({

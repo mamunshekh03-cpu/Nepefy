@@ -715,7 +715,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                   [
                     {
                       title: 'Staking Vaults',
-                      sub: 'Up to 18% APY yield',
+                      sub: 'Up to 25% APR yield',
                       icon: Layers,
                       tone: 'text-emerald-600 bg-emerald-50',
                       tab: 'staking',

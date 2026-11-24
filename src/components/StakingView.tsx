@@ -172,7 +172,9 @@ export const StakingView: React.FC<StakingViewProps> = ({ user, onRefresh }) => 
       activePrincipal: Number(activePrincipal.toFixed(2)),
       totalProfitPaid: Number(totalProfitPaid.toFixed(2)),
       totalMonthsPaid,
-      totalProfitBalance: Number((user.profit_balance ?? totalAccruedBalance).toFixed(2)),
+      totalProfitBalance: Number(
+        (profitSummary?.totalProfitBalance ?? (typeof user.profit_balance === 'number' && user.profit_balance > 0 ? user.profit_balance : totalAccruedBalance)).toFixed(2)
+      ),
       unlockedProfit,
       lockedDailyProfit,
       dailyRateTotal,
