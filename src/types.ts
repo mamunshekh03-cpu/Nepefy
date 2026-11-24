@@ -462,13 +462,20 @@ export interface PresaleRound {
   id: string;
   token_symbol: string;
   token_name: string;
+  face_value?: number;
+  lot_size?: number;
+  issue_price?: number;
   lot_price: number;
   network_fee: number;
   tokens_per_lot: number;
   projected_win_payout: number;
   total_lots: number;
+  total_issue_size?: number;
   sold_lots: number;
   draw_date: string;
+  listing_date?: string;
+  min_lots?: number;
+  max_lots?: number;
   status: string;
   created_at: string;
 }

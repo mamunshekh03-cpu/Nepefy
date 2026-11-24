@@ -6741,9 +6741,25 @@ async function startServer() {
   }));
 
   app.post('/api/admin/presale/rounds', requireAdmin, ah(async (req, res) => {
-    const { token_symbol, token_name, lot_price, tokens_per_lot, projected_win_payout, total_lots, status } = req.body || {};
+    const {
+      token_symbol,
+      token_name,
+      face_value,
+      lot_size,
+      issue_price,
+      lot_price,
+      tokens_per_lot,
+      projected_win_payout,
+      total_lots,
+      total_issue_size,
+      listing_date,
+      min_lots,
+      max_lots,
+      status,
+    } = req.body || {};
+
     const cleanSym = String(token_symbol || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
-    const cleanName = String(token_name || '').trim().slice(0, 64);
+    const cleanName = String(token_name || '').trim().slice(0, 80);
     const numLotPrice = Number(lot_price);
     const numTokensPerLot = Number(tokens_per_lot);
     const numWinPayout = Number(projected_win_payout);
@@ -6764,24 +6780,45 @@ async function startServer() {
       return;
     }
 
+    const numFaceValue = Number(face_value) > 0 ? Number(face_value) : 10.0;
+    const numLotSize = Math.floor(Number(lot_size)) > 0 ? Math.floor(Number(lot_size)) : Math.floor(numTokensPerLot) || 50;
+    const numIssuePrice = Number(issue_price) > 0 ? Number(issue_price) : Number((numLotPrice / numLotSize).toFixed(4));
+    const numTotalIssueSize = Number(total_issue_size) > 0 ? Number(total_issue_size) : Number((numTotalLots * numLotPrice).toFixed(2));
+    const numMinLots = Math.floor(Number(min_lots)) >= 1 ? Math.floor(Number(min_lots)) : 1;
+    const numMaxLots = Math.floor(Number(max_lots)) >= numMinLots ? Math.floor(Number(max_lots)) : Math.min(500, numTotalLots);
+    const cleanListingDate = String(listing_date || '').trim() || new Date(Date.now() + 30 * 86400000).toISOString();
+    const drawDate = cleanListingDate;
+
     const presaleFee = (await getPlatformSettings()).presaleNetworkFeeUsd;
     const baseId = `IPO-${cleanSym}`;
     const existingRound = await db.prepare('SELECT id FROM presale_rounds WHERE id = ?').get(baseId);
     const id = existingRound ? `${baseId}-${crypto.randomBytes(2).toString('hex').toUpperCase()}` : baseId;
-    const drawDate = new Date(Date.now() + 30 * 86400000).toISOString();
+
     await db.prepare(`
-      INSERT INTO presale_rounds (id, token_symbol, token_name, lot_price, network_fee, tokens_per_lot, projected_win_payout, total_lots, sold_lots, draw_date, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+      INSERT INTO presale_rounds (
+        id, token_symbol, token_name, face_value, lot_size, issue_price,
+        lot_price, network_fee, tokens_per_lot, projected_win_payout,
+        total_lots, total_issue_size, sold_lots, draw_date, listing_date,
+        min_lots, max_lots, status, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       cleanSym,
       cleanName,
+      Number(numFaceValue.toFixed(4)),
+      numLotSize,
+      Number(numIssuePrice.toFixed(4)),
       Number(numLotPrice.toFixed(4)),
       presaleFee,
       Number(numTokensPerLot.toFixed(4)),
       Number(numWinPayout.toFixed(2)),
       numTotalLots,
+      Number(numTotalIssueSize.toFixed(2)),
       drawDate,
+      cleanListingDate,
+      numMinLots,
+      numMaxLots,
       initialStatus,
       new Date().toISOString()
     );

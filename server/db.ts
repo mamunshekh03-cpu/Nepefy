@@ -789,13 +789,20 @@ export async function initDatabase(): Promise<void> {
       id TEXT PRIMARY KEY,
       token_symbol TEXT NOT NULL,
       token_name TEXT NOT NULL,
+      face_value DOUBLE PRECISION NOT NULL DEFAULT 10.00,
+      lot_size INTEGER NOT NULL DEFAULT 50,
+      issue_price DOUBLE PRECISION NOT NULL DEFAULT 1.50,
       lot_price DOUBLE PRECISION NOT NULL,
       network_fee DOUBLE PRECISION NOT NULL DEFAULT 0.50,
       tokens_per_lot DOUBLE PRECISION NOT NULL,
       projected_win_payout DOUBLE PRECISION NOT NULL,
       total_lots INTEGER NOT NULL,
+      total_issue_size DOUBLE PRECISION NOT NULL DEFAULT 0,
       sold_lots INTEGER NOT NULL DEFAULT 0,
       draw_date TEXT NOT NULL,
+      listing_date TEXT,
+      min_lots INTEGER NOT NULL DEFAULT 1,
+      max_lots INTEGER NOT NULL DEFAULT 500,
       status TEXT NOT NULL DEFAULT 'OPEN',
       created_at TEXT NOT NULL
     );
@@ -1213,6 +1220,14 @@ export async function initDatabase(): Promise<void> {
   await ensureColumn('p2p_orders', 'seller_payment_snapshot', 'TEXT');
   await ensureColumn('p2p_orders', 'expires_at', 'TEXT');
   await ensureColumn('p2p_orders', 'paid_at', 'TEXT');
+
+  await ensureColumn('presale_rounds', 'face_value', 'DOUBLE PRECISION NOT NULL DEFAULT 10.00');
+  await ensureColumn('presale_rounds', 'lot_size', 'INTEGER NOT NULL DEFAULT 50');
+  await ensureColumn('presale_rounds', 'issue_price', 'DOUBLE PRECISION NOT NULL DEFAULT 1.50');
+  await ensureColumn('presale_rounds', 'total_issue_size', 'DOUBLE PRECISION NOT NULL DEFAULT 0');
+  await ensureColumn('presale_rounds', 'listing_date', 'TEXT');
+  await ensureColumn('presale_rounds', 'min_lots', 'INTEGER NOT NULL DEFAULT 1');
+  await ensureColumn('presale_rounds', 'max_lots', 'INTEGER NOT NULL DEFAULT 500');
 
   // Ensure all Top 30 live market pairs exist
   const existingPairRows = (await db.prepare('SELECT symbol FROM market_pairs').all()) as { symbol: string }[];

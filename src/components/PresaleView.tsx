@@ -356,6 +356,13 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
               const isClosed = r.status !== 'OPEN' || remaining <= 0;
               const exceedsRemaining = !isClosed && lots > remaining;
 
+              const faceValue = r.face_value ?? 10.0;
+              const marketLot = r.lot_size ?? r.tokens_per_lot ?? 50;
+              const issuePrice = r.issue_price ?? (lotPrice / (marketLot || 1));
+              const totalIssueSize = r.total_issue_size && r.total_issue_size > 0 ? r.total_issue_size : (r.total_lots * lotPrice);
+              const tokensPerLot = r.tokens_per_lot ?? marketLot;
+              const totalSharesForLots = lots * marketLot;
+
               // Helper for quick share buttons
               const setQuantity = (qty: number) => {
                 const target = Math.min(remaining, Math.max(1, qty));
@@ -390,6 +397,12 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           </span>
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular bg-slate-200 text-slate-700">
                             {r.id}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 font-mono-tabular">
+                            FV: ${formatUsd(faceValue)}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 font-mono-tabular">
+                            Lot: {marketLot} Sh
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
@@ -460,68 +473,110 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                         </div>
                       </div>
 
-                      {/* COMPLETE 1-SHARE / LOT INFORMATION BREAKDOWN */}
+                      {/* COMPLETE IPO SHARE SPECIFICATIONS BREAKDOWN */}
                       <div className="space-y-2.5">
-                        <div className="flex items-center gap-1.5">
-                          <Info className="w-3.5 h-3.5 text-blue-600" />
-                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                            1 Share Specifications &amp; Return Model
-                          </h4>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Info className="w-3.5 h-3.5 text-blue-600" />
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                              IPO Specifications &amp; Valuation
+                            </h4>
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-mono-tabular">
+                            Allotment: {formatDateTime(r.draw_date)}
+                          </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2.5 text-left">
-                          {/* 1. Share Unit Price */}
-                          <div className="border border-slate-200 rounded-xl p-3 bg-gradient-to-br from-white to-slate-50">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left">
+                          {/* 1. Face Value */}
+                          <div className="border border-slate-200 rounded-xl p-2.5 bg-gradient-to-br from-white to-slate-50">
                             <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-                              Share / Lot Price
+                              Face Value (FV)
                             </div>
-                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-slate-900">
+                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
+                              ${formatUsd(faceValue)}
+                            </div>
+                            <div className="text-[10px] text-slate-500">Nominal Par Value</div>
+                          </div>
+
+                          {/* 2. Offer / Issue Price */}
+                          <div className="border border-slate-200 rounded-xl p-2.5 bg-gradient-to-br from-white to-slate-50">
+                            <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                              Issue / Offer Price
+                            </div>
+                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
+                              ${formatUsd(issuePrice)}
+                            </div>
+                            <div className="text-[10px] text-slate-500">Per 1 Share / Token</div>
+                          </div>
+
+                          {/* 3. Market Lot Size */}
+                          <div className="border border-blue-200/80 rounded-xl p-2.5 bg-gradient-to-br from-blue-50/30 to-white">
+                            <div className="text-[10px] font-medium text-blue-900 uppercase tracking-wider">
+                              Market Lot Size
+                            </div>
+                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-blue-700">
+                              {marketLot} Shares
+                            </div>
+                            <div className="text-[10px] text-slate-500">Min 1 Application Lot</div>
+                          </div>
+
+                          {/* 4. Lot Subscription Price */}
+                          <div className="border border-blue-200/80 rounded-xl p-2.5 bg-gradient-to-br from-blue-50/40 to-white">
+                            <div className="text-[10px] font-medium text-blue-900 uppercase tracking-wider">
+                              Lot Subscription Price
+                            </div>
+                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
                               ${formatUsd(lotPrice)}
                             </div>
-                            <div className="text-[10px] text-slate-500">Per 1 Share / Lot</div>
+                            <div className="text-[10px] text-slate-500 font-mono-tabular">1 Lot = {marketLot} Sh × ${formatUsd(issuePrice)}</div>
                           </div>
 
-                          {/* 2. Token Allocation */}
-                          <div className="border border-slate-200 rounded-xl p-3 bg-gradient-to-br from-white to-slate-50">
+                          {/* 5. Total Issue Size */}
+                          <div className="border border-slate-200 rounded-xl p-2.5 bg-gradient-to-br from-white to-slate-50">
                             <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-                              Token Yield
+                              Total Issue Size
                             </div>
-                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-blue-600">
-                              {r.tokens_per_lot}{' '}
-                              <span className="text-xs font-semibold text-slate-700">{r.token_symbol}</span>
+                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">
+                              ${formatUsd(totalIssueSize)}
                             </div>
-                            <div className="text-[10px] text-slate-500 font-mono-tabular">
-                              ~${effectivePricePerToken} / token
-                            </div>
+                            <div className="text-[10px] text-slate-500">{r.total_lots.toLocaleString()} Total Lots</div>
                           </div>
 
-                          {/* 3. Potential Win Cash Jackpot */}
-                          <div className="border border-emerald-200 rounded-xl p-3 bg-gradient-to-br from-emerald-50/50 to-white">
+                          {/* 6. Win Cash Jackpot */}
+                          <div className="border border-emerald-200 rounded-xl p-2.5 bg-gradient-to-br from-emerald-50/50 to-white">
                             <div className="text-[10px] font-medium text-emerald-800 uppercase tracking-wider flex items-center justify-between gap-1">
                               <span className="truncate">Win Cash Jackpot</span>
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono-tabular shrink-0">
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-mono-tabular shrink-0">
                                 {winMultiplier}x
                               </span>
                             </div>
-                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-emerald-700">
+                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-emerald-700">
                               +${formatUsd(r.projected_win_payout)}
                             </div>
-                            <div className="text-[10px] text-emerald-700 font-medium">
-                              Into Claimable Wallet
-                            </div>
+                            <div className="text-[10px] text-emerald-700 font-medium">Into Claimable Wallet</div>
                           </div>
 
-                          {/* 4. Guaranteed Non-Win Protection */}
-                          <div className="border border-blue-200 rounded-xl p-3 bg-gradient-to-br from-blue-50/40 to-white">
+                          {/* 7. Guaranteed Loss Protection */}
+                          <div className="border border-blue-200 rounded-xl p-2.5 bg-gradient-to-br from-blue-50/40 to-white">
                             <div className="text-[10px] font-medium text-blue-900 uppercase tracking-wider">
                               Draw Loss Protection
                             </div>
-                            <div className="mt-0.5 text-base font-extrabold font-mono-tabular text-blue-700">
+                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-blue-700">
                               100% Refund
                             </div>
-                            <div className="text-[10px] text-slate-600 font-mono-tabular">
-                              +${formatUsd(lotPrice)} to Claimable
+                            <div className="text-[10px] text-slate-600 font-mono-tabular">+${formatUsd(lotPrice)} to Claimable</div>
+                          </div>
+
+                          {/* 8. Token Yield */}
+                          <div className="border border-slate-200 rounded-xl p-2.5 bg-gradient-to-br from-white to-slate-50">
+                            <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                              Token Allocation
                             </div>
+                            <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-blue-600 truncate">
+                              {tokensPerLot} {r.token_symbol}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono-tabular">Credited upon listing</div>
                           </div>
                         </div>
                       </div>
@@ -649,6 +704,14 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                             Max
                           </button>
                         </div>
+
+                        {/* Shares / Lots breakdown strip */}
+                        <div className="flex items-center justify-between text-xs px-3 py-2 rounded-xl bg-blue-50/70 border border-blue-100 text-blue-950 font-medium">
+                          <span>Subscribed Shares:</span>
+                          <span className="font-bold font-mono-tabular text-blue-700">
+                            {lots} Lots × {marketLot} = {totalSharesForLots} {r.token_symbol} Shares
+                          </span>
+                        </div>
                       </div>
 
                       {/* Detailed Financial Calculation Ledger */}
@@ -738,7 +801,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           <span>Insufficient Balance</span>
                         ) : (
                           <>
-                            <span>Subscribe {lots} Share(s) • ${formatUsd(totalCost)}</span>
+                            <span>Subscribe {lots} Lot(s) ({totalSharesForLots} Shares) • ${formatUsd(totalCost)}</span>
                             <ArrowRight className="w-4 h-4" />
                           </>
                         )}

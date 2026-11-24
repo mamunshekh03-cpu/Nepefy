@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Building2, Calendar, CheckCircle2, Clock, Coins, DollarSign, Info, Layers, Sparkles, TrendingUp } from 'lucide-react';
 import { apiFetch, formatDateTime, formatUsd } from '../../lib/api';
 import type { PresaleTicket, StakingPosition } from '../../types';
 import type { AdminMetrics, AdminOverviewData, RunActionFn } from './adminTypes';
@@ -242,7 +243,41 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
   filteredPresaleTickets,
   runAction,
 }) => {
-  const [newRoundStatus, setNewRoundStatus] = React.useState<'OPEN' | 'UPCOMING'>('OPEN');
+  const [newRoundStatus, setNewRoundStatus] = useState<'OPEN' | 'UPCOMING'>('OPEN');
+  const [newFaceValue, setNewFaceValue] = useState('10.00');
+  const [newLotSize, setNewLotSize] = useState('50');
+  const [newIssuePrice, setNewIssuePrice] = useState('1.50');
+  const [newListingDate, setNewListingDate] = useState(() => {
+    const d = new Date(Date.now() + 30 * 86400000);
+    return d.toISOString().split('T')[0];
+  });
+  const [newMinLots, setNewMinLots] = useState('1');
+  const [newMaxLots, setNewMaxLots] = useState('100');
+
+  const handleLotSizeChange = (val: string) => {
+    setNewLotSize(val);
+    setNewTokensPerLot(val);
+    const size = Number(val) || 0;
+    const iprice = Number(newIssuePrice) || 0;
+    if (size > 0 && iprice > 0) {
+      setNewLotPrice((size * iprice).toFixed(2));
+    }
+  };
+
+  const handleIssuePriceChange = (val: string) => {
+    setNewIssuePrice(val);
+    const iprice = Number(val) || 0;
+    const size = Number(newLotSize) || 0;
+    if (size > 0 && iprice > 0) {
+      setNewLotPrice((size * iprice).toFixed(2));
+    }
+  };
+
+  const calcTotalLots = Number(newTotalLots) || 0;
+  const calcLotPrice = Number(newLotPrice) || 0;
+  const calcTotalIssue = calcTotalLots * calcLotPrice;
+  const calcWinPayout = Number(newWinPayout) || 0;
+  const winMultiplier = calcLotPrice > 0 ? (calcWinPayout / calcLotPrice).toFixed(1) : '0';
 
   return (
     <div className="space-y-5">
@@ -256,28 +291,39 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               body: JSON.stringify({
                 token_symbol: newTokenSym,
                 token_name: newTokenName,
-                lot_price: Number(newLotPrice),
-                tokens_per_lot: Number(newTokensPerLot),
-                projected_win_payout: Number(newWinPayout),
-                total_lots: Number(newTotalLots),
+                face_value: Number(newFaceValue) || 10.0,
+                lot_size: Number(newLotSize) || 50,
+                issue_price: Number(newIssuePrice) || 1.5,
+                lot_price: Number(newLotPrice) || 75.0,
+                tokens_per_lot: Number(newTokensPerLot) || Number(newLotSize) || 50,
+                projected_win_payout: Number(newWinPayout) || 180.0,
+                total_lots: Number(newTotalLots) || 100000,
+                total_issue_size: calcTotalIssue,
+                listing_date: newListingDate,
+                min_lots: Number(newMinLots) || 1,
+                max_lots: Number(newMaxLots) || 100,
                 status: newRoundStatus,
               }),
             });
             const createdSym = newTokenSym.toUpperCase();
             setNewTokenSym('');
             setNewTokenName('');
-            return `Launched new Coin Presale round (${createdSym}) as ${newRoundStatus}.`;
+            return `Launched new IPO Share round (${createdSym}) as ${newRoundStatus}.`;
           });
         }}
         className="border border-slate-200 rounded-xl bg-white p-5 space-y-4"
       >
         <div className="pb-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">Launch New Coin Presale Round</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Configure lot allocation, token yield per lot, and projected winning payout ($
-              {formatUsd(data.platformSettings?.presaleNetworkFeeUsd ?? 0.5)} fixed network fee per ticket).
-            </p>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Launch New Coin Presale / IPO Round</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Configure IPO Share valuation (Face Value, Market Lot, Offer Price, Win Payout, Target Size, and Listing Schedule).
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="text-slate-500 font-medium">Initial Status:</span>
@@ -291,31 +337,91 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
             </select>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 items-end">
+
+        {/* Section 1: Company Profile & Schedule */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Symbol</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Stock / Token Symbol</label>
             <input
               type="text"
               required
-              placeholder="VELOX"
+              placeholder="e.g. BD or REX"
               value={newTokenSym}
               onChange={(e) => setNewTokenSym(e.target.value)}
-              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
+              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600 font-bold uppercase"
             />
           </div>
           <div className="lg:col-span-2">
-            <label className="block text-xs font-medium text-slate-700 mb-1">Project Name</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Company / Project Name</label>
             <input
               type="text"
               required
-              placeholder="Velox Settlement Network"
+              placeholder="e.g. Bangladesh IPO Ltd or Rexzone Amline PNL"
               value={newTokenName}
               onChange={(e) => setNewTokenName(e.target.value)}
               className="w-full h-9 px-3 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Lot Price ($)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Draw &amp; Listing Date</label>
+            <input
+              type="date"
+              value={newListingDate}
+              onChange={(e) => setNewListingDate(e.target.value)}
+              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
+            />
+          </div>
+        </div>
+
+        {/* Section 2: Valuation & Lot Specifications */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Face Value ($/sh)</label>
+            <input
+              type="number"
+              required
+              min="0.01"
+              step="0.01"
+              value={newFaceValue}
+              onChange={(e) => setNewFaceValue(e.target.value)}
+              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
+              placeholder="10.00"
+            />
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Par value</span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Market Lot (Shares)</label>
+            <input
+              type="number"
+              required
+              min="1"
+              step="1"
+              value={newLotSize}
+              onChange={(e) => handleLotSizeChange(e.target.value)}
+              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
+              placeholder="50"
+            />
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Shares / lot</span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Issue Price ($/sh)</label>
+            <input
+              type="number"
+              required
+              min="0.0001"
+              step="any"
+              value={newIssuePrice}
+              onChange={(e) => handleIssuePriceChange(e.target.value)}
+              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
+              placeholder="1.50"
+            />
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Offer price</span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Lot Price ($ / Lot)</label>
             <input
               type="number"
               required
@@ -323,21 +429,12 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               step="0.01"
               value={newLotPrice}
               onChange={(e) => setNewLotPrice(e.target.value)}
-              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
+              className="w-full h-9 px-3 text-xs font-mono-tabular border border-blue-300 bg-blue-50/20 font-bold text-blue-900 rounded-lg focus:outline-none focus:border-blue-600"
+              placeholder="75.00"
             />
+            <span className="text-[10px] text-slate-500 mt-0.5 block">1 Lot subscription</span>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Tokens / Lot</label>
-            <input
-              type="number"
-              required
-              min="0.000001"
-              step="any"
-              value={newTokensPerLot}
-              onChange={(e) => setNewTokensPerLot(e.target.value)}
-              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
-            />
-          </div>
+
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Win Payout ($)</label>
             <input
@@ -347,135 +444,192 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               step="0.01"
               value={newWinPayout}
               onChange={(e) => setNewWinPayout(e.target.value)}
-              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
+              className="w-full h-9 px-3 text-xs font-mono-tabular border border-emerald-300 bg-emerald-50/20 font-bold text-emerald-800 rounded-lg focus:outline-none focus:border-emerald-600"
+              placeholder="180.00"
             />
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Cash bonus if drawn</span>
           </div>
-          <div className="flex gap-2">
-            <div className="w-24">
-              <label className="block text-xs font-medium text-slate-700 mb-1">Lots</label>
-              <input
-                type="number"
-                required
-                min="1"
-                step="1"
-                value={newTotalLots}
-                onChange={(e) => setNewTotalLots(e.target.value)}
-                className="w-full h-9 px-2.5 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
-              />
-            </div>
-            <button
-              type="submit"
-              className="flex-1 h-9 mt-auto px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg whitespace-nowrap"
-            >
-              Launch
-            </button>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Total Lots (Issue)</label>
+            <input
+              type="number"
+              required
+              min="1"
+              step="1"
+              value={newTotalLots}
+              onChange={(e) => setNewTotalLots(e.target.value)}
+              className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600 font-bold"
+              placeholder="100000"
+            />
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Offering pool</span>
           </div>
+        </div>
+
+        {/* Live Calculation & IPO Summary Preview Banner */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-slate-600">
+            <span className="flex items-center gap-1 font-semibold text-slate-900">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              IPO Summary:
+            </span>
+            <span>
+              1 Lot = <strong className="text-slate-900 font-mono-tabular">{newLotSize} Shares</strong> @ <strong className="text-slate-900 font-mono-tabular">${Number(newIssuePrice || 0).toFixed(2)}</strong>
+            </span>
+            <span className="text-slate-300 hidden sm:inline">|</span>
+            <span>
+              Target Issue Size: <strong className="text-blue-700 font-mono-tabular">${formatUsd(calcTotalIssue)}</strong>
+            </span>
+            <span className="text-slate-300 hidden sm:inline">|</span>
+            <span>
+              Win Return: <strong className="text-emerald-700 font-mono-tabular">{winMultiplier}x (+${formatUsd(calcWinPayout)})</strong>
+            </span>
+            <span className="text-slate-300 hidden sm:inline">|</span>
+            <span className="text-blue-600 font-medium">100% Principal Guaranteed</span>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full sm:w-auto h-9 px-6 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-xs whitespace-nowrap shrink-0 flex items-center justify-center gap-1.5"
+          >
+            <Coins className="w-3.5 h-3.5" />
+            <span>Launch IPO Round</span>
+          </button>
         </div>
       </form>
 
       {/* Active & Historical Presale Rounds */}
       <div className="border border-slate-200 rounded-xl bg-white overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/40">
-          <h2 className="text-sm font-semibold text-slate-900">Active &amp; Historical Presale Rounds</h2>
+        <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/40 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-blue-600" />
+            <h2 className="text-sm font-semibold text-slate-900">Active &amp; Historical Presale Rounds</h2>
+          </div>
+          <span className="text-xs text-slate-500 font-mono-tabular">
+            {data.presaleRounds.length} round(s) configured
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 text-xs font-medium text-slate-500 bg-slate-50/70">
-                <th className="py-3 px-4">Token</th>
-                <th className="py-3 px-4 text-right">Lot Price</th>
-                <th className="py-3 px-4 text-right">Tokens / Lot</th>
-                <th className="py-3 px-4 text-right">Win Payout</th>
+                <th className="py-3 px-4">Token / Company</th>
+                <th className="py-3 px-3 text-right">Face Value</th>
+                <th className="py-3 px-3 text-right">Offer Price</th>
+                <th className="py-3 px-3 text-right">Market Lot</th>
+                <th className="py-3 px-3 text-right">Lot Price</th>
+                <th className="py-3 px-3 text-right">Total Issue Size</th>
+                <th className="py-3 px-3 text-right">Win Payout</th>
                 <th className="py-3 px-4 text-right">Sold / Total Lots</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Round Control</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-xs">
-              {data.presaleRounds.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50/60">
-                  <td className="py-3 px-4">
-                    <div className="font-semibold text-slate-900">{r.token_symbol}</div>
-                    <div className="text-slate-500">{r.token_name}</div>
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono-tabular">${formatUsd(r.lot_price)}</td>
-                  <td className="py-3 px-4 text-right font-mono-tabular">{r.tokens_per_lot}</td>
-                  <td className="py-3 px-4 text-right font-mono-tabular text-emerald-600 font-semibold">
-                    ${formatUsd(r.projected_win_payout)}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono-tabular">
-                    {r.sold_lots} / {r.total_lots}
-                  </td>
-                  <td className="py-3 px-4 font-medium">
-                    <span
-                      className={
-                        r.status === 'OPEN'
-                          ? 'text-emerald-600'
-                          : r.status === 'UPCOMING'
-                          ? 'text-blue-600'
-                          : 'text-slate-400'
-                      }
-                    >
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="inline-flex items-center gap-1.5">
-                      {r.status !== 'OPEN' && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            runAction(async () => {
-                              await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
-                                method: 'POST',
-                                body: JSON.stringify({ status: 'OPEN' }),
-                              });
-                              return `Presale round ${r.token_symbol} set to OPEN (Active).`;
-                            })
-                          }
-                          className="px-2.5 py-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-medium whitespace-nowrap"
-                        >
-                          Open IPO
-                        </button>
-                      )}
-                      {r.status !== 'UPCOMING' && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            runAction(async () => {
-                              await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
-                                method: 'POST',
-                                body: JSON.stringify({ status: 'UPCOMING' }),
-                              });
-                              return `Presale round ${r.token_symbol} set to UPCOMING.`;
-                            })
-                          }
-                          className="px-2.5 py-1.5 border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-medium whitespace-nowrap"
-                        >
-                          Set Upcoming
-                        </button>
-                      )}
-                      {r.status !== 'CLOSED' && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            runAction(async () => {
-                              await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
-                                method: 'POST',
-                                body: JSON.stringify({ status: 'CLOSED' }),
-                              });
-                              return `Presale round ${r.token_symbol} set to CLOSED (Previous).`;
-                            })
-                          }
-                          className="px-2.5 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-medium whitespace-nowrap"
-                        >
-                          Close Round
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {data.presaleRounds.map((r) => {
+                const fv = r.face_value ?? 10.0;
+                const mLot = r.lot_size ?? r.tokens_per_lot ?? 50;
+                const iPrice = r.issue_price ?? (r.lot_price / (mLot || 1));
+                const totIssue = r.total_issue_size && r.total_issue_size > 0 ? r.total_issue_size : (r.total_lots * r.lot_price);
+                return (
+                  <tr key={r.id} className="hover:bg-slate-50/60">
+                    <td className="py-3 px-4">
+                      <div className="font-semibold text-slate-900">{r.token_symbol}</div>
+                      <div className="text-slate-500 text-[11px] truncate max-w-[160px]">{r.token_name}</div>
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono-tabular text-slate-700">
+                      ${formatUsd(fv)}
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono-tabular text-slate-700">
+                      ${formatUsd(iPrice)}
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono-tabular font-medium text-blue-700">
+                      {mLot} sh
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono-tabular font-semibold text-slate-900">
+                      ${formatUsd(r.lot_price)}
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono-tabular text-slate-700">
+                      ${formatUsd(totIssue)}
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono-tabular text-emerald-600 font-semibold">
+                      +${formatUsd(r.projected_win_payout)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono-tabular">
+                      <span className="font-semibold text-slate-900">{r.sold_lots}</span>
+                      <span className="text-slate-400"> / {r.total_lots}</span>
+                    </td>
+                    <td className="py-3 px-4 font-medium">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          r.status === 'OPEN'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : r.status === 'UPCOMING'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="inline-flex items-center gap-1.5">
+                        {r.status !== 'OPEN' && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              runAction(async () => {
+                                await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
+                                  method: 'POST',
+                                  body: JSON.stringify({ status: 'OPEN' }),
+                                });
+                                return `Presale round ${r.token_symbol} set to OPEN (Active).`;
+                              })
+                            }
+                            className="px-2.5 py-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-medium whitespace-nowrap"
+                          >
+                            Open IPO
+                          </button>
+                        )}
+                        {r.status !== 'UPCOMING' && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              runAction(async () => {
+                                await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
+                                  method: 'POST',
+                                  body: JSON.stringify({ status: 'UPCOMING' }),
+                                });
+                                return `Presale round ${r.token_symbol} set to UPCOMING.`;
+                              })
+                            }
+                            className="px-2.5 py-1.5 border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-medium whitespace-nowrap"
+                          >
+                            Set Upcoming
+                          </button>
+                        )}
+                        {r.status !== 'CLOSED' && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              runAction(async () => {
+                                await apiFetch(`/api/admin/presale/rounds/${r.id}/status`, {
+                                  method: 'POST',
+                                  body: JSON.stringify({ status: 'CLOSED' }),
+                                });
+                                return `Presale round ${r.token_symbol} set to CLOSED (Previous).`;
+                              })
+                            }
+                            className="px-2.5 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-medium whitespace-nowrap"
+                          >
+                            Close Round
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
