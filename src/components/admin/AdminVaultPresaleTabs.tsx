@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Building2, Calendar, CheckCircle2, Clock, Coins, DollarSign, Info, Layers, RefreshCw, Sparkles, TrendingUp } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Building2, Calendar, CheckCircle2, ChevronDown, ChevronUp, Clock, Coins, DollarSign, Info, Layers, RefreshCw, Sparkles, TrendingUp } from 'lucide-react';
 import { apiFetch, formatDateTime, formatUsd } from '../../lib/api';
 import type { PresaleTicket, StakingPosition } from '../../types';
 import type { AdminMetrics, AdminOverviewData, RunActionFn } from './adminTypes';
@@ -203,6 +203,13 @@ export const AdminStakingTab: React.FC<AdminStakingTabProps> = ({
   );
 };
 
+interface PresaleUserTicketGroup {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  tickets: PresaleTicket[];
+}
+
 interface AdminPresaleTabProps {
   data: AdminOverviewData;
   newTokenSym: string;
@@ -251,6 +258,36 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
     const d = new Date(Date.now() + 30 * 86400000);
     return d.toISOString().split('T')[0];
   });
+  const [expandedUserIds, setExpandedUserIds] = useState<string[]>([]);
+
+  const presaleTicketGroups = useMemo(() => {
+    const grouped = new Map<string, PresaleUserTicketGroup>();
+    for (const ticket of filteredPresaleTickets) {
+      const existing = grouped.get(ticket.user_id);
+      if (existing) {
+        existing.tickets.push(ticket);
+      } else {
+        grouped.set(ticket.user_id, {
+          userId: ticket.user_id,
+          userName: ticket.user_name || 'Unknown user',
+          userEmail: ticket.user_email || 'No email',
+          tickets: [ticket],
+        });
+      }
+    }
+    return Array.from(grouped.values())
+      .map((group) => ({
+        ...group,
+        tickets: [...group.tickets].sort((a, b) => b.created_at.localeCompare(a.created_at)),
+      }))
+      .sort((a, b) => b.tickets.length - a.tickets.length || a.userName.localeCompare(b.userName));
+  }, [filteredPresaleTickets]);
+
+  const toggleUserTickets = (userId: string) => {
+    setExpandedUserIds((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]
+    );
+  };
 
   const handleLotSizeChange = (val: string) => {
     setNewLotSize(val);
@@ -682,122 +719,186 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 text-xs font-medium text-slate-500 bg-slate-50/70">
-                <th className="py-3 px-4">Ticket / User</th>
-                <th className="py-3 px-4">Token</th>
-                <th className="py-3 px-4">6-Digit Lot Numbers</th>
+                <th className="py-3 px-4">User</th>
+                <th className="py-3 px-4 text-right">IPO Rounds</th>
+                <th className="py-3 px-4 text-right">Tickets</th>
                 <th className="py-3 px-4 text-right">Lots</th>
-                <th className="py-3 px-4 text-right">Principal (excl. Fee)</th>
-                <th className="py-3 px-4">Result</th>
-                <th className="py-3 px-4 text-right">Admin Settlement</th>
+                <th className="py-3 px-4 text-right">Principal</th>
+                <th className="py-3 px-4 text-right">Pending</th>
+                <th className="py-3 px-4 text-right">WIN</th>
+                <th className="py-3 px-4 text-right">LOSS</th>
+                <th className="py-3 px-4 text-right">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-xs">
-              {filteredPresaleTickets.length === 0 ? (
+              {presaleTicketGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 px-4 text-center text-slate-500">
+                  <td colSpan={9} className="py-10 px-4 text-center text-slate-500">
                     No presale tickets match this filter.
                   </td>
                 </tr>
               ) : (
-                filteredPresaleTickets.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/60">
-                    <td className="py-3 px-4">
-                      <div className="font-mono-tabular font-medium text-slate-900">{t.id}</div>
-                      <div className="text-slate-500">
-                        {t.user_name} ({t.user_email})
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-slate-900">{t.token_symbol}</td>
-                    <td className="py-3 px-4">
-                      {t.ticket_numbers && t.ticket_numbers.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {t.ticket_numbers.map((num) => {
-                            const isWinningNum = t.winning_number && t.winning_number === num;
-                            return (
-                              <button
-                                key={num}
-                                type="button"
-                                title={t.result === 'PENDING' ? 'Click to select as winning number' : undefined}
-                                onClick={() => {
-                                  if (t.result === 'PENDING') {
-                                    setDrawRoundId(t.round_id);
-                                    setDrawWinningNumber(num);
-                                  }
-                                }}
-                                className={`px-2 py-0.5 rounded font-mono-tabular text-[11px] font-bold transition-colors ${
-                                  isWinningNum
-                                    ? 'bg-emerald-600 text-white'
-                                    : t.result === 'PENDING'
-                                    ? 'bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-200 cursor-pointer'
-                                    : 'bg-slate-100 text-slate-600'
-                                }`}
-                              >
-                                #{num}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono-tabular">{t.lots_count}</td>
-                    <td className="py-3 px-4 text-right font-mono-tabular font-semibold text-slate-900">
-                      ${formatUsd(t.principal_paid)}
-                    </td>
-                    <td className="py-3 px-4 font-semibold">
-                      <span
-                        className={
-                          t.result === 'WIN'
-                            ? 'text-emerald-600'
-                            : t.result === 'LOSS'
-                              ? 'text-amber-600'
-                              : 'text-blue-600'
-                        }
-                      >
-                        {t.result}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      {t.result === 'PENDING' ? (
-                        <div className="inline-flex items-center gap-2">
+                presaleTicketGroups.map((group) => {
+                  const isExpanded = expandedUserIds.includes(group.userId);
+                  const roundCount = new Set(group.tickets.map((ticket) => ticket.round_id)).size;
+                  const totalLots = group.tickets.reduce((sum, ticket) => sum + Number(ticket.lots_count || 0), 0);
+                  const totalPrincipal = group.tickets.reduce((sum, ticket) => sum + Number(ticket.principal_paid || 0), 0);
+                  const pendingCount = group.tickets.filter((ticket) => ticket.result === 'PENDING').length;
+                  const winCount = group.tickets.filter((ticket) => ticket.result === 'WIN').length;
+                  const lossCount = group.tickets.filter((ticket) => ticket.result === 'LOSS').length;
+                  return (
+                    <React.Fragment key={group.userId}>
+                      <tr className="hover:bg-slate-50/60">
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-slate-900">{group.userName}</div>
+                          <div className="text-slate-500">{group.userEmail}</div>
+                          <div className="font-mono-tabular text-[10px] text-slate-400">{group.userId}</div>
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono-tabular">{roundCount}</td>
+                        <td className="py-3 px-4 text-right font-mono-tabular font-semibold text-slate-900">{group.tickets.length}</td>
+                        <td className="py-3 px-4 text-right font-mono-tabular">{totalLots}</td>
+                        <td className="py-3 px-4 text-right font-mono-tabular font-semibold text-slate-900">${formatUsd(totalPrincipal)}</td>
+                        <td className="py-3 px-4 text-right font-mono-tabular text-blue-600">{pendingCount}</td>
+                        <td className="py-3 px-4 text-right font-mono-tabular text-emerald-600">{winCount}</td>
+                        <td className="py-3 px-4 text-right font-mono-tabular text-amber-600">{lossCount}</td>
+                        <td className="py-3 px-4 text-right">
                           <button
                             type="button"
-                            onClick={() =>
-                              runAction(async () => {
-                                await apiFetch(`/api/admin/presale/tickets/${t.id}/settle`, {
-                                  method: 'POST',
-                                  body: JSON.stringify({ result: 'WIN' }),
-                                });
-                                return `Settled ${t.id} as WIN — credited tokens + profit to ${t.user_name}'s Claimable Wallet.`;
-                              })
-                            }
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium whitespace-nowrap"
+                            onClick={() => toggleUserTickets(group.userId)}
+                            aria-expanded={isExpanded}
+                            className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:underline"
                           >
-                            Set WIN
+                            {isExpanded ? 'Hide' : 'View'}
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              runAction(async () => {
-                                await apiFetch(`/api/admin/presale/tickets/${t.id}/settle`, {
-                                  method: 'POST',
-                                  body: JSON.stringify({ result: 'LOSS' }),
-                                });
-                                return `Settled ${t.id} as LOSS — refunded $${formatUsd(t.principal_paid)} principal (excl. $${formatUsd(t.fee_paid)} fee) to Claimable Wallet.`;
-                              })
-                            }
-                            className="px-3 py-1.5 border border-amber-300 text-amber-700 hover:bg-amber-50 rounded-lg font-medium whitespace-nowrap"
-                          >
-                            Set LOSS (Refund)
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="font-mono-tabular text-slate-500">Paid ${formatUsd(t.payout_amount)}</span>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="bg-slate-50/60">
+                          <td colSpan={9} className="px-4 py-4">
+                            <div className="w-0 min-w-full">
+                            <div className="mb-2 text-xs font-semibold text-slate-700">{group.userName}&apos;s IPO purchases</div>
+                            <div className="w-full min-w-0 bg-white text-left">
+                              <div className="grid w-full grid-cols-7 border-b border-slate-200 text-[11px] font-medium text-slate-500">
+                                <div className="min-w-0 px-3 py-2.5 text-left">IPO / Ticket</div>
+                                <div className="min-w-0 px-3 py-2.5 text-left">Purchased</div>
+                                <div className="min-w-0 px-3 py-2.5 text-left">6-Digit Lot Numbers</div>
+                                <div className="min-w-0 px-3 py-2.5 text-right">Lots</div>
+                                <div className="min-w-0 px-3 py-2.5 text-right">Principal</div>
+                                <div className="min-w-0 px-3 py-2.5 text-left">Result</div>
+                                <div className="min-w-0 px-3 py-2.5 text-right">Admin Settlement</div>
+                              </div>
+                              <div className="divide-y divide-slate-100">
+                                {group.tickets.map((ticket) => (
+                                  <div key={ticket.id} className="grid w-full grid-cols-7">
+                                    <div className="min-w-0 px-3 py-3">
+                                      <div className="font-semibold text-slate-900">{ticket.token_symbol}</div>
+                                      <div className="break-all font-mono-tabular text-[10px] text-slate-500">{ticket.id}</div>
+                                    </div>
+                                    <div className="min-w-0 px-3 py-3 font-mono-tabular text-slate-500">{formatDateTime(ticket.created_at)}</div>
+                                    <div className="min-w-0 px-3 py-3">
+                                      {ticket.ticket_numbers && ticket.ticket_numbers.length > 0 ? (
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                          {ticket.ticket_numbers.map((num, index) => {
+                                            const isWinningNum = Boolean(ticket.winning_number && ticket.winning_number === num);
+                                            return (
+                                              <React.Fragment key={num}>
+                                                {index > 0 && <span className="text-slate-300">,</span>}
+                                                <button
+                                                  type="button"
+                                                  title={ticket.result === 'PENDING' ? 'Click to select as winning number' : undefined}
+                                                  onClick={() => {
+                                                    if (ticket.result === 'PENDING') {
+                                                      setDrawRoundId(ticket.round_id);
+                                                      setDrawWinningNumber(num);
+                                                    }
+                                                  }}
+                                                  className={`font-mono-tabular font-semibold ${
+                                                    isWinningNum
+                                                      ? 'text-emerald-700'
+                                                      : ticket.result === 'PENDING'
+                                                      ? 'text-blue-700 hover:underline'
+                                                      : 'text-slate-600'
+                                                  }`}
+                                                >
+                                                  #{num}
+                                                </button>
+                                              </React.Fragment>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <span className="text-slate-400">—</span>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0 px-3 py-3 text-right font-mono-tabular">{ticket.lots_count}</div>
+                                    <div className="min-w-0 px-3 py-3 text-right font-mono-tabular font-semibold text-slate-900">
+                                      ${formatUsd(ticket.principal_paid)}
+                                      <div className="text-[10px] font-normal text-slate-400">Fee ${formatUsd(ticket.fee_paid)}</div>
+                                    </div>
+                                    <div className="min-w-0 px-3 py-3 font-semibold">
+                                      <span
+                                        className={
+                                          ticket.result === 'WIN'
+                                            ? 'text-emerald-600'
+                                            : ticket.result === 'LOSS'
+                                            ? 'text-amber-600'
+                                            : 'text-blue-600'
+                                        }
+                                      >
+                                        {ticket.result}
+                                      </span>
+                                    </div>
+                                    <div className="min-w-0 px-3 py-3 text-right">
+                                      {ticket.result === 'PENDING' ? (
+                                        <div className="inline-flex max-w-full flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              runAction(async () => {
+                                                await apiFetch(`/api/admin/presale/tickets/${ticket.id}/settle`, {
+                                                  method: 'POST',
+                                                  body: JSON.stringify({ result: 'WIN' }),
+                                                });
+                                                return `Settled ${ticket.id} as WIN — credited tokens + profit to ${ticket.user_name}'s Claimable Wallet.`;
+                                              })
+                                            }
+                                            className="font-semibold text-emerald-700 hover:underline"
+                                          >
+                                            WIN
+                                          </button>
+                                          <span className="text-slate-300">/</span>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              runAction(async () => {
+                                                await apiFetch(`/api/admin/presale/tickets/${ticket.id}/settle`, {
+                                                  method: 'POST',
+                                                  body: JSON.stringify({ result: 'LOSS' }),
+                                                });
+                                                return `Settled ${ticket.id} as LOSS — refunded $${formatUsd(ticket.principal_paid)} principal (excl. $${formatUsd(ticket.fee_paid)} fee) to Claimable Wallet.`;
+                                              })
+                                            }
+                                            className="font-semibold text-amber-700 hover:underline"
+                                          >
+                                            Refund
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="font-mono-tabular text-slate-500">Paid ${formatUsd(ticket.payout_amount)}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))
+                    </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>
