@@ -180,7 +180,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
   const principal = Number((totalShares * lotPrice).toFixed(2));
   const totalCost = Number((principal + networkFee).toFixed(2));
   const percentSold = r && r.total_lots > 0 ? Math.min(100, Math.round((r.sold_lots / r.total_lots) * 100)) : 0;
-  const totalIssueSize = r ? (r.total_issue_size && r.total_issue_size > 0 ? r.total_issue_size : r.total_lots * oneLotPrice) : 0;
+  const totalIssueSize = r ? Number((r.total_lots * oneLotPrice).toFixed(2)) : 0;
   const canAfford = user.main_balance >= totalCost;
   const isClosed = !r || r.status !== 'OPEN' || remaining <= 0;
   const exceedsRemaining = !isClosed && lots > remaining;
@@ -347,7 +347,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           <span className="text-xs text-slate-500 truncate max-w-[140px]">· {r.token_name}</span>
                         </div>
                         <div className="text-[11px] text-slate-500 font-mono-tabular">
-                          ${formatUsd(lotPrice)}/share · {remaining} left
+                          1 Lot = ${formatUsd(oneLotPrice)} ({lotSize} shares) · {remaining} lots left
                         </div>
                       </div>
                     </div>
@@ -358,6 +358,8 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     <div className="absolute z-30 mt-1.5 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden divide-y divide-slate-100 max-h-64 overflow-y-auto">
                       {displayedRounds.map((item) => {
                         const itemRem = Math.max(0, item.total_lots - item.sold_lots);
+                        const itemLotSize = Math.max(1, Number(item.tokens_per_lot || item.lot_size || 50));
+                        const itemOneLot = Number((itemLotSize * Number(item.lot_price || 0)).toFixed(2));
                         const isSelected = item.id === r.id;
                         return (
                           <button
@@ -379,12 +381,12 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                                   <span className="text-[11px] text-slate-500 truncate max-w-[120px]">{item.token_name}</span>
                                 </div>
                                 <div className="text-[10px] text-slate-400 font-mono-tabular">
-                                  {itemRem} / {item.total_lots} shares left
+                                  {itemRem} / {item.total_lots} lots left ({itemLotSize} shares/lot)
                                 </div>
                               </div>
                             </div>
                             <div className="text-right shrink-0">
-                              <div className="text-xs font-bold font-mono-tabular text-slate-900">${formatUsd(item.lot_price)}</div>
+                              <div className="text-xs font-bold font-mono-tabular text-slate-900">${formatUsd(itemOneLot)}/lot</div>
                               <div className={`text-[10px] font-semibold ${
                                 item.status === 'OPEN' ? 'text-emerald-600' : item.status === 'UPCOMING' ? 'text-blue-600' : 'text-slate-400'
                               }`}>
@@ -754,7 +756,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                 <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50/80">
                   <th className="py-3 px-4">Ticket / Date</th>
                   <th className="py-3 px-4">Token</th>
-                  <th className="py-3 px-4 text-center">Shares</th>
+                  <th className="py-3 px-4 text-center">Lots / Shares</th>
                   <th className="py-3 px-4 text-right">Paid (Lot + Fee)</th>
                   <th className="py-3 px-4 text-center">Draw Status</th>
                   <th className="py-3 px-4 text-right">Credited to Claimable</th>
@@ -789,7 +791,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           </div>
                         </td>
                         <td className="py-3 px-4 text-center font-mono-tabular">
-                          <span className="px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-800">{t.lots_count}</span>
+                          <span className="px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-800">{t.lots_count} {t.lots_count === 1 ? 'Lot' : 'Lots'}</span>
                           <div className="text-[10px] text-slate-400 mt-0.5">{Number(((t.lots_count || 0) * (t.tokens_per_lot || 0)).toFixed(0))} {t.token_symbol}</div>
                         </td>
                         <td className="py-3 px-4 text-right font-mono-tabular font-semibold text-slate-900">

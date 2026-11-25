@@ -6789,7 +6789,9 @@ async function startServer() {
     const numIssuePrice = Math.abs(numLotSize * rawIssuePrice - numLotPrice) > 0.02
       ? Number((numLotPrice / numLotSize).toFixed(6))
       : rawIssuePrice;
-    const numTotalIssueSize = Number(total_issue_size) > 0 ? Number(total_issue_size) : Number((numTotalLots * numLotPrice).toFixed(2));
+    const numTotalIssueSize = Number(total_issue_size) > 0
+      ? Number(total_issue_size)
+      : Number((numTotalLots * numLotSize * numLotPrice).toFixed(2));
     const numMinLots = Math.floor(Number(min_lots)) >= 1 ? Math.floor(Number(min_lots)) : 1;
     const numMaxLots = Math.floor(Number(max_lots)) >= numMinLots ? Math.floor(Number(max_lots)) : Math.min(500, numTotalLots);
     const cleanListingDate = String(listing_date || '').trim() || new Date(Date.now() + 30 * 86400000).toISOString();
