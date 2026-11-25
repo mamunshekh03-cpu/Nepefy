@@ -244,6 +244,8 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
 }) => {
   const [newRoundStatus, setNewRoundStatus] = useState<'OPEN' | 'UPCOMING'>('OPEN');
   const [newLotSize, setNewLotSize] = useState('50');
+  const [drawRoundId, setDrawRoundId] = useState('');
+  const [drawWinningNumber, setDrawWinningNumber] = useState('');
   const [newListingDate, setNewListingDate] = useState(() => {
     const d = new Date(Date.now() + 30 * 86400000);
     return d.toISOString().split('T')[0];
@@ -596,12 +598,65 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
             ))}
           </div>
         </div>
+
+        {/* 6-Digit Winning Number Draw Control */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const targetRoundId = drawRoundId || data.presaleRounds[0]?.id;
+            if (!targetRoundId) return;
+            runAction(async () => {
+              const res = await apiFetch<{ tokenSymbol: string; winningNumber: string; winCount: number; lossCount: number }>(
+                `/api/admin/presale/rounds/${targetRoundId}/draw-number`,
+                {
+                  method: 'POST',
+                  body: JSON.stringify({ winning_number: drawWinningNumber }),
+                }
+              );
+              setDrawWinningNumber('');
+              return `Declared #${res.winningNumber} as ${res.tokenSymbol} winner! ${res.winCount} ticket(s) won, ${res.lossCount} ticket(s) 100% refunded.`;
+            });
+          }}
+          className="px-4 py-3 border-b border-slate-200 bg-blue-50/40 flex flex-wrap items-center gap-3 text-xs"
+        >
+          <span className="font-semibold text-slate-800 whitespace-nowrap">Declare 6-Digit Winning Number:</span>
+          <select
+            value={drawRoundId || data.presaleRounds[0]?.id || ''}
+            onChange={(e) => setDrawRoundId(e.target.value)}
+            className="h-8 px-2.5 border border-slate-200 rounded-lg bg-white text-slate-800 font-medium focus:outline-none focus:border-blue-600"
+          >
+            {data.presaleRounds.map((round) => (
+              <option key={round.id} value={round.id}>
+                {round.token_symbol} ({round.status})
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            required
+            maxLength={6}
+            pattern="\d{6}"
+            placeholder="6-digit # (click number below)"
+            value={drawWinningNumber}
+            onChange={(e) => setDrawWinningNumber(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            className="h-8 w-48 px-3 border border-slate-200 rounded-lg bg-white font-mono-tabular font-bold text-slate-900 focus:outline-none focus:border-blue-600"
+          />
+          <button
+            type="submit"
+            disabled={!data.presaleRounds.length || drawWinningNumber.length !== 6}
+            className="h-8 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold rounded-lg transition-colors whitespace-nowrap"
+          >
+            Declare Winner &amp; Refund Others
+          </button>
+        </form>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 text-xs font-medium text-slate-500 bg-slate-50/70">
                 <th className="py-3 px-4">Ticket / User</th>
                 <th className="py-3 px-4">Token</th>
+                <th className="py-3 px-4">6-Digit Lot Numbers</th>
                 <th className="py-3 px-4 text-right">Lots</th>
                 <th className="py-3 px-4 text-right">Principal (excl. Fee)</th>
                 <th className="py-3 px-4">Result</th>
@@ -611,7 +666,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
             <tbody className="divide-y divide-slate-200 text-xs">
               {filteredPresaleTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 px-4 text-center text-slate-500">
+                  <td colSpan={7} className="py-10 px-4 text-center text-slate-500">
                     No presale tickets match this filter.
                   </td>
                 </tr>
@@ -625,6 +680,39 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                       </div>
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-900">{t.token_symbol}</td>
+                    <td className="py-3 px-4">
+                      {t.ticket_numbers && t.ticket_numbers.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {t.ticket_numbers.map((num) => {
+                            const isWinningNum = t.winning_number && t.winning_number === num;
+                            return (
+                              <button
+                                key={num}
+                                type="button"
+                                title={t.result === 'PENDING' ? 'Click to select as winning number' : undefined}
+                                onClick={() => {
+                                  if (t.result === 'PENDING') {
+                                    setDrawRoundId(t.round_id);
+                                    setDrawWinningNumber(num);
+                                  }
+                                }}
+                                className={`px-2 py-0.5 rounded font-mono-tabular text-[11px] font-bold transition-colors ${
+                                  isWinningNum
+                                    ? 'bg-emerald-600 text-white'
+                                    : t.result === 'PENDING'
+                                    ? 'bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-200 cursor-pointer'
+                                    : 'bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                #{num}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-right font-mono-tabular">{t.lots_count}</td>
                     <td className="py-3 px-4 text-right font-mono-tabular font-semibold text-slate-900">
                       ${formatUsd(t.principal_paid)}

@@ -21,6 +21,7 @@ import {
   BellRing,
   CalendarClock,
   BadgeDollarSign,
+  X,
 } from 'lucide-react';
 
 interface PresaleViewProps {
@@ -38,7 +39,17 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [popup, setPopup] = useState<{
+    type: 'ok' | 'err';
+    title: string;
+    message: string;
+    ticketId?: string;
+    tokenSymbol?: string;
+    lots?: number;
+    totalShares?: number;
+    totalCost?: number;
+    ticketNumbers?: string[];
+  } | null>(null);
   const [ipoTab, setIpoTab] = useState<'ACTIVE' | 'UPCOMING' | 'PREVIOUS'>('ACTIVE');
   const [ticketFilter, setTicketFilter] = useState<'ALL' | 'PENDING' | 'WIN' | 'LOSS'>('ALL');
 
@@ -103,7 +114,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
   );
 
   const handleBuyLots = async (round: PresaleRound) => {
-    setNotice(null);
+    setPopup(null);
     setBusyId(round.id);
     const lots = Math.max(1, Math.floor(Number(lotCounts[round.id] || 1)));
     const remaining = Math.max(0, round.total_lots - round.sold_lots);
@@ -116,36 +127,44 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
     const totalCost = Number((principal + networkFee).toFixed(2));
 
     if (round.status !== 'OPEN' || remaining <= 0) {
-      setNotice({ type: 'err', text: 'This presale round is closed or sold out.' });
+      setPopup({ type: 'err', title: 'Round Closed', message: 'This presale round is closed or sold out.' });
       setBusyId(null);
       return;
     }
     if (lots > remaining) {
-      setNotice({ type: 'err', text: `Only ${remaining} lot(s) remaining.` });
+      setPopup({ type: 'err', title: 'Limit Exceeded', message: `Only ${remaining} lot(s) remaining.` });
       setBusyId(null);
       return;
     }
     if (user.main_balance < totalCost) {
-      setNotice({
+      setPopup({
         type: 'err',
-        text: `Insufficient balance. Need $${formatUsd(totalCost)}, have $${formatUsd(user.main_balance)}.`,
+        title: 'Insufficient Balance',
+        message: `Need $${formatUsd(totalCost)}, but you have $${formatUsd(user.main_balance)} in Main Balance.`,
       });
       setBusyId(null);
       return;
     }
 
     try {
-      await apiFetch('/api/presale/buy', {
+      const res = await apiFetch<{ ticket: PresaleTicket }>('/api/presale/buy', {
         method: 'POST',
         body: JSON.stringify({ round_id: round.id, lots_count: lots }),
       });
-      setNotice({
+      setPopup({
         type: 'ok',
-        text: `Subscribed ${lots} lot(s) (${totalShares} shares) of ${round.token_symbol}! $${formatUsd(principal)} lot price + $${formatUsd(networkFee)} network fee deducted.`,
+        title: 'IPO Subscription Confirmed',
+        message: `Subscribed ${lots} lot(s) (${totalShares} shares) of ${round.token_symbol}. $${formatUsd(principal)} lot price + $${formatUsd(networkFee)} network fee deducted.`,
+        ticketId: res.ticket?.id,
+        tokenSymbol: round.token_symbol,
+        lots,
+        totalShares,
+        totalCost,
+        ticketNumbers: res.ticket?.ticket_numbers || [],
       });
       await Promise.all([loadPresale(false), onRefresh()]);
     } catch (err: any) {
-      setNotice({ type: 'err', text: err.message || 'Purchase failed.' });
+      setPopup({ type: 'err', title: 'Purchase Failed', message: err.message || 'Purchase failed.' });
     } finally {
       setBusyId(null);
     }
@@ -250,18 +269,72 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
         </div>
       </div>
 
-      {/* ── Global Notice ── */}
-      {notice && (
-        <div className={`flex items-start gap-3 px-4 py-3 rounded-xl text-sm border ${
-          notice.type === 'ok'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-            : 'border-red-200 bg-red-50 text-red-800'
-        }`}>
-          {notice.type === 'ok'
-            ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            : <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
-          <span className="flex-1 font-medium">{notice.text}</span>
-          <button onClick={() => setNotice(null)} className="text-xs opacity-50 hover:opacity-100 underline">Dismiss</button>
+      {/* ── Popup Modal (Purchase Confirmation / Error) ── */}
+      {popup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className={`px-5 py-4 flex items-center justify-between border-b ${
+              popup.type === 'ok' ? 'bg-emerald-50/80 border-emerald-100' : 'bg-red-50/80 border-red-100'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                {popup.type === 'ok' ? (
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                )}
+                <h3 className={`text-sm font-bold ${popup.type === 'ok' ? 'text-emerald-900' : 'text-red-900'}`}>
+                  {popup.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPopup(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/70 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{popup.message}</p>
+
+              {popup.type === 'ok' && popup.ticketNumbers && popup.ticketNumbers.length > 0 && (
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    <span>Your 6-Digit Lottery Numbers</span>
+                    {popup.ticketId && <span className="font-mono-tabular text-slate-700">{popup.ticketId}</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {popup.ticketNumbers.map((num) => (
+                      <span
+                        key={num}
+                        className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-mono-tabular text-xs font-bold tracking-wider shadow-xs"
+                      >
+                        #{num}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Each lot gets 1 unique 6-digit number. Admin declares the winning 6-digit number at draw time.
+                  </p>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setPopup(null)}
+                className={`w-full h-10 rounded-xl text-xs font-bold text-white transition-colors ${
+                  popup.type === 'ok' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-800 hover:bg-slate-900'
+                }`}
+              >
+                OK, Got It
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -620,22 +693,42 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     </div>
                   </div>
 
-                  {/* User's status for this selected IPO */}
+                  {/* User's status & 6-digit lottery numbers for this selected IPO */}
                   {selectedRoundTickets.length > 0 && (
-                    <div className="rounded-xl bg-indigo-50/70 border border-indigo-200/80 px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2 text-indigo-900 font-medium">
-                        <BellRing className="w-4 h-4 text-indigo-600 shrink-0" />
-                        <span>
-                          You have <strong>{selectedRoundTickets.length}</strong> ticket(s) in {r.token_symbol} ({selectedRoundTickets.reduce((s, t) => s + t.lots_count, 0)} lots).
+                    <div className="rounded-xl bg-indigo-50/70 border border-indigo-200/80 px-4 py-3 space-y-2 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-indigo-900 font-medium">
+                          <BellRing className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <span>
+                            You have <strong>{selectedRoundTickets.length}</strong> ticket(s) in {r.token_symbol} ({selectedRoundTickets.reduce((s, t) => s + t.lots_count, 0)} lots).
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-semibold text-indigo-700">
+                          {selectedRoundTickets.some((t) => t.result === 'WIN')
+                            ? 'Winner Credited!'
+                            : selectedRoundTickets.some((t) => t.result === 'PENDING')
+                            ? 'Awaiting Draw Result'
+                            : 'Principal Refunded'}
                         </span>
                       </div>
-                      <span className="text-[11px] font-semibold text-indigo-700">
-                        {selectedRoundTickets.some((t) => t.result === 'WIN')
-                          ? 'Winner Credited!'
-                          : selectedRoundTickets.some((t) => t.result === 'PENDING')
-                          ? 'Awaiting Draw Result'
-                          : 'Principal Refunded'}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-semibold text-indigo-700 uppercase tracking-wide mr-1">Your Lot Numbers:</span>
+                        {selectedRoundTickets.flatMap((t) => t.ticket_numbers || []).map((num) => {
+                          const isWinningNum = r.winning_number && r.winning_number === num;
+                          return (
+                            <span
+                              key={num}
+                              className={`px-2 py-0.5 rounded font-mono-tabular text-[11px] font-bold ${
+                                isWinningNum
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'bg-white text-indigo-800 border border-indigo-200'
+                              }`}
+                            >
+                              #{num}{isWinningNum ? ' ★' : ''}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -780,6 +873,25 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                         <td className="py-3 px-4 font-mono-tabular">
                           <div className="font-semibold text-slate-900 text-[11px]">{t.id}</div>
                           <div className="text-[11px] text-slate-400">{formatDateTime(t.created_at)}</div>
+                          {t.ticket_numbers && t.ticket_numbers.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {t.ticket_numbers.map((num) => {
+                                const isWinningNum = t.winning_number && t.winning_number === num;
+                                return (
+                                  <span
+                                    key={num}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                      isWinningNum
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                    }`}
+                                  >
+                                    #{num}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">

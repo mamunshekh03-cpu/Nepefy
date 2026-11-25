@@ -476,6 +476,7 @@ export interface PresaleRound {
   listing_date?: string;
   min_lots?: number;
   max_lots?: number;
+  winning_number?: string | null;
   status: string;
   created_at: string;
 }
@@ -492,6 +493,8 @@ export interface PresaleTicket {
   tokens_per_lot: number;
   projected_win_payout: number;
   lots_count: number;
+  ticket_numbers?: string[];
+  winning_number?: string | null;
   principal_paid: number;
   fee_paid: number;
   result: 'PENDING' | 'WIN' | 'LOSS';

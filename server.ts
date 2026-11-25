@@ -4407,15 +4407,19 @@ async function startServer() {
 
   app.get('/api/presale/rounds', requireAuth, ah(async (req: AuthenticatedRequest, res) => {
     const rounds = await db.prepare('SELECT * FROM presale_rounds ORDER BY created_at DESC').all();
-    const tickets = await db
+    const rawTickets = (await db
       .prepare(`
-        SELECT t.*, r.token_symbol, r.token_name, r.lot_price, r.tokens_per_lot, r.projected_win_payout
+        SELECT t.*, r.token_symbol, r.token_name, r.lot_price, r.tokens_per_lot, r.projected_win_payout, r.winning_number
         FROM presale_tickets t
         JOIN presale_rounds r ON t.round_id = r.id
         WHERE t.user_id = ?
         ORDER BY t.created_at DESC
       `)
-      .all(req.auth!.userId);
+      .all(req.auth!.userId)) as any[];
+    const tickets = rawTickets.map((t) => ({
+      ...t,
+      ticket_numbers: parseTicketNumbers(t.ticket_numbers),
+    }));
     res.json({ rounds, tickets });
   }));
 
@@ -4462,10 +4466,37 @@ async function startServer() {
         const ticketId = generateId('TKT');
         const now = new Date().toISOString();
 
+        // Generate unique 6-digit lottery numbers (1 per lot) for this round
+        const existingRoundTickets = (await db
+          .prepare('SELECT ticket_numbers FROM presale_tickets WHERE round_id = ?')
+          .all(round.id)) as { ticket_numbers?: string | null }[];
+        const usedNumbers = new Set<string>();
+        for (const row of existingRoundTickets) {
+          for (const num of parseTicketNumbers(row.ticket_numbers)) {
+            usedNumbers.add(num);
+          }
+        }
+        const lotNumbers: string[] = [];
+        for (let i = 0; i < lots; i++) {
+          let candidate = '';
+          for (let attempt = 0; attempt < 80; attempt++) {
+            const rand = String(crypto.randomInt(100000, 1000000));
+            if (!usedNumbers.has(rand)) {
+              candidate = rand;
+              break;
+            }
+          }
+          if (!candidate) {
+            candidate = String(crypto.randomInt(100000, 1000000));
+          }
+          usedNumbers.add(candidate);
+          lotNumbers.push(candidate);
+        }
+
         await db.prepare(`
-          INSERT INTO presale_tickets (id, round_id, user_id, lots_count, principal_paid, fee_paid, result, payout_amount, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?)
-        `).run(ticketId, round.id, userId, lots, principalPaid, feePaid, now);
+          INSERT INTO presale_tickets (id, round_id, user_id, lots_count, ticket_numbers, principal_paid, fee_paid, result, payout_amount, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', 0, ?)
+        `).run(ticketId, round.id, userId, lots, JSON.stringify(lotNumbers), principalPaid, feePaid, now);
 
         await appendLedger(
           userId,
@@ -4474,10 +4505,11 @@ async function startServer() {
           -totalCost,
           nextMain,
           ticketId,
-          `Purchased ${lots} lot(s) of ${round.token_symbol} ($${principalPaid.toFixed(2)} + $${feePaid.toFixed(2)} fee)`
+          `Purchased ${lots} lot(s) of ${round.token_symbol} ($${principalPaid.toFixed(2)} + $${feePaid.toFixed(2)} fee) [${lotNumbers.join(', ')}]`
         );
 
-        return await db.prepare('SELECT * FROM presale_tickets WHERE id = ?').get(ticketId);
+        const created = (await db.prepare('SELECT * FROM presale_tickets WHERE id = ?').get(ticketId)) as any;
+        return { ...created, ticket_numbers: lotNumbers };
       })();
 
       res.status(201).json({ ticket });
@@ -5160,15 +5192,19 @@ async function startServer() {
     }));
 
     const presaleRounds = await db.prepare('SELECT * FROM presale_rounds ORDER BY created_at DESC').all();
-    const presaleTickets = await db
+    const rawPresaleTickets = (await db
       .prepare(`
-        SELECT t.*, r.token_symbol, r.tokens_per_lot, r.projected_win_payout, u.full_name as user_name, u.email as user_email
+        SELECT t.*, r.token_symbol, r.tokens_per_lot, r.projected_win_payout, r.winning_number, u.full_name as user_name, u.email as user_email
         FROM presale_tickets t
         JOIN presale_rounds r ON t.round_id = r.id
         JOIN users u ON t.user_id = u.id
         ORDER BY CASE WHEN t.result = 'PENDING' THEN 0 ELSE 1 END, t.created_at DESC
       `)
-      .all();
+      .all()) as any[];
+    const presaleTickets = rawPresaleTickets.map((t) => ({
+      ...t,
+      ticket_numbers: parseTicketNumbers(t.ticket_numbers),
+    }));
 
     const rawLuckyDraws = (await db
       .prepare(`
@@ -6834,6 +6870,90 @@ async function startServer() {
     res.status(201).json({ round: await db.prepare('SELECT * FROM presale_rounds WHERE id = ?').get(id) });
   }));
 
+  async function settlePresaleTicketInTx(ticket: any, round: any, result: 'WIN' | 'LOSS', winningNumber?: string | null) {
+    const user = (await db.prepare('SELECT * FROM users WHERE id = ?').get(ticket.user_id)) as any;
+    if (!user) throw new Error('Ticket owner not found');
+    const now = new Date().toISOString();
+
+    if (result === 'WIN') {
+      const payoutUsd = Number((ticket.lots_count * round.projected_win_payout).toFixed(2));
+      const tokensWon = Number((ticket.lots_count * round.tokens_per_lot).toFixed(4));
+      const nextClaimable = Number((user.claimable_balance + payoutUsd).toFixed(2));
+
+      await db.prepare('UPDATE users SET claimable_balance = ? WHERE id = ?').run(nextClaimable, user.id);
+
+      const existingHolding = (await db
+        .prepare('SELECT * FROM user_coin_holdings WHERE user_id = ? AND asset = ?')
+        .get(user.id, round.token_symbol)) as any;
+      if (existingHolding) {
+        await db.prepare('UPDATE user_coin_holdings SET quantity = quantity + ? WHERE user_id = ? AND asset = ?').run(
+          tokensWon,
+          user.id,
+          round.token_symbol
+        );
+      } else {
+        await db.prepare('INSERT INTO user_coin_holdings (user_id, asset, quantity, avg_entry_price) VALUES (?, ?, ?, ?)').run(
+          user.id,
+          round.token_symbol,
+          tokensWon,
+          Number((round.lot_price / round.tokens_per_lot).toFixed(4))
+        );
+      }
+
+      await db.prepare("UPDATE presale_tickets SET result = 'WIN', payout_amount = ?, settled_at = ? WHERE id = ?").run(
+        payoutUsd,
+        now,
+        ticket.id
+      );
+
+      await appendLedger(
+        user.id,
+        'CLAIMABLE',
+        'PRESALE_WIN',
+        payoutUsd,
+        nextClaimable,
+        ticket.id,
+        `Presale WIN${winningNumber ? ` (#${winningNumber})` : ''}: ${tokensWon} ${round.token_symbol} + $${payoutUsd.toFixed(2)} payout`
+      );
+
+      await createUserNotification({
+        userId: user.id,
+        category: 'REWARDS',
+        title: `Presale WIN · ${round.token_symbol}`,
+        message: `${winningNumber ? `Winning #${winningNumber}! ` : ''}Won ${tokensWon} ${round.token_symbol} + $${payoutUsd.toFixed(2)} USDT in your Claimable Wallet!`,
+        linkTab: 'presale',
+      });
+    } else {
+      const refundUsd = Number(Number(ticket.principal_paid).toFixed(2));
+      const nextClaimable = Number((user.claimable_balance + refundUsd).toFixed(2));
+      await db.prepare('UPDATE users SET claimable_balance = ? WHERE id = ?').run(nextClaimable, user.id);
+
+      await db.prepare("UPDATE presale_tickets SET result = 'LOSS', payout_amount = ?, settled_at = ? WHERE id = ?").run(
+        refundUsd,
+        now,
+        ticket.id
+      );
+
+      await appendLedger(
+        user.id,
+        'CLAIMABLE',
+        'PRESALE_REFUND',
+        refundUsd,
+        nextClaimable,
+        ticket.id,
+        `Presale Draw Refund${winningNumber ? ` (Winning #${winningNumber})` : ''}: $${refundUsd.toFixed(2)} principal returned (excl. $${Number(ticket.fee_paid).toFixed(2)} fee)`
+      );
+
+      await createUserNotification({
+        userId: user.id,
+        category: 'REWARDS',
+        title: `Presale Draw Settled · ${round.token_symbol}`,
+        message: `$${refundUsd.toFixed(2)} USDT principal was refunded to your Claimable Wallet.`,
+        linkTab: 'presale',
+      });
+    }
+  }
+
   app.post('/api/admin/presale/tickets/:id/settle', requireAdmin, ah(async (req, res) => {
     const { result } = req.body || {};
     if (!['WIN', 'LOSS'].includes(result)) {
@@ -6848,94 +6968,61 @@ async function startServer() {
         if (ticket.result !== 'PENDING') throw new Error('Ticket already settled');
 
         const round = (await db.prepare('SELECT * FROM presale_rounds WHERE id = ?').get(ticket.round_id)) as any;
-        const user = (await db.prepare('SELECT * FROM users WHERE id = ?').get(ticket.user_id)) as any;
-        const now = new Date().toISOString();
-
-        if (result === 'WIN') {
-          const payoutUsd = Number((ticket.lots_count * round.projected_win_payout).toFixed(2));
-          const tokensWon = Number((ticket.lots_count * round.tokens_per_lot).toFixed(4));
-          const nextClaimable = Number((user.claimable_balance + payoutUsd).toFixed(2));
-
-          await db.prepare('UPDATE users SET claimable_balance = ? WHERE id = ?').run(nextClaimable, user.id);
-
-          const existingHolding = (await db
-            .prepare('SELECT * FROM user_coin_holdings WHERE user_id = ? AND asset = ?')
-            .get(user.id, round.token_symbol)) as any;
-          if (existingHolding) {
-            await db.prepare('UPDATE user_coin_holdings SET quantity = quantity + ? WHERE user_id = ? AND asset = ?').run(
-              tokensWon,
-              user.id,
-              round.token_symbol
-            );
-          } else {
-            await db.prepare('INSERT INTO user_coin_holdings (user_id, asset, quantity, avg_entry_price) VALUES (?, ?, ?, ?)').run(
-              user.id,
-              round.token_symbol,
-              tokensWon,
-              Number((round.lot_price / round.tokens_per_lot).toFixed(4))
-            );
-          }
-
-          await db.prepare("UPDATE presale_tickets SET result = 'WIN', payout_amount = ?, settled_at = ? WHERE id = ?").run(
-            payoutUsd,
-            now,
-            ticket.id
-          );
-
-          await appendLedger(
-            user.id,
-            'CLAIMABLE',
-            'PRESALE_WIN',
-            payoutUsd,
-            nextClaimable,
-            ticket.id,
-            `Presale WIN: ${tokensWon} ${round.token_symbol} + $${payoutUsd.toFixed(2)} payout`
-          );
-
-          await createUserNotification({
-            userId: user.id,
-            category: 'REWARDS',
-            title: `Presale WIN · ${round.token_symbol}`,
-            message: `Won ${tokensWon} ${round.token_symbol} + $${payoutUsd.toFixed(2)} USDT in your Claimable Wallet!`,
-            linkTab: 'presale',
-          });
-        } else {
-          // LOSS: Principal investment refunded (excluding fee) into Claimable Wallet
-          const refundUsd = Number(ticket.principal_paid.toFixed(2));
-          const nextClaimable = Number((user.claimable_balance + refundUsd).toFixed(2));
-          await db.prepare('UPDATE users SET claimable_balance = ? WHERE id = ?').run(nextClaimable, user.id);
-
-          await db.prepare("UPDATE presale_tickets SET result = 'LOSS', payout_amount = ?, settled_at = ? WHERE id = ?").run(
-            refundUsd,
-            now,
-            ticket.id
-          );
-
-          await appendLedger(
-            user.id,
-            'CLAIMABLE',
-            'PRESALE_REFUND',
-            refundUsd,
-            nextClaimable,
-            ticket.id,
-            `Presale Draw Refund: $${refundUsd.toFixed(2)} principal returned (excl. $${ticket.fee_paid.toFixed(2)} fee)`
-          );
-
-          await createUserNotification({
-            userId: user.id,
-            category: 'REWARDS',
-            title: `Presale Draw Settled · ${round.token_symbol}`,
-            message: `$${refundUsd.toFixed(2)} USDT principal was refunded to your Claimable Wallet.`,
-            linkTab: 'presale',
-          });
-        }
-
+        await settlePresaleTicketInTx(ticket, round, result);
         return await db.prepare('SELECT * FROM presale_tickets WHERE id = ?').get(ticket.id);
       })();
 
       res.json({ ticket: settled });
     } catch (err: any) {
       res.status(400).json({ error: err.message || 'Presale settlement failed' });
+    }
+  }));
+
+  app.post('/api/admin/presale/rounds/:id/draw-number', requireAdmin, ah(async (req, res) => {
+    const winningNumber = String(req.body?.winning_number || '').trim().replace(/^#/, '');
+    if (!/^\d{6}$/.test(winningNumber)) {
+      res.status(400).json({ error: 'Winning number must be a valid 6-digit number (e.g. 482910).' });
+      return;
+    }
+
+    try {
+      const summary = await db.transaction(async () => {
+        const round = (await db.prepare('SELECT * FROM presale_rounds WHERE id = ?').get(req.params.id)) as any;
+        if (!round) throw new Error('Presale round not found');
+
+        const pendingTickets = (await db
+          .prepare("SELECT * FROM presale_tickets WHERE round_id = ? AND result = 'PENDING'")
+          .all(round.id)) as any[];
+
+        if (pendingTickets.length === 0) {
+          throw new Error('No pending tickets in this round to settle.');
+        }
+
+        const hasMatch = pendingTickets.some((t) => parseTicketNumbers(t.ticket_numbers).includes(winningNumber));
+        if (!hasMatch) {
+          throw new Error(`No pending ticket in ${round.token_symbol} holds number #${winningNumber}.`);
+        }
+
+        let winCount = 0;
+        let lossCount = 0;
+        for (const ticket of pendingTickets) {
+          const nums = parseTicketNumbers(ticket.ticket_numbers);
+          const isWinner = nums.includes(winningNumber);
+          await settlePresaleTicketInTx(ticket, round, isWinner ? 'WIN' : 'LOSS', winningNumber);
+          if (isWinner) winCount += 1;
+          else lossCount += 1;
+        }
+
+        await db
+          .prepare("UPDATE presale_rounds SET winning_number = ?, status = 'CLOSED' WHERE id = ?")
+          .run(winningNumber, round.id);
+
+        return { roundId: round.id, tokenSymbol: round.token_symbol, winningNumber, winCount, lossCount };
+      })();
+
+      res.json(summary);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message || 'Failed to declare winning number.' });
     }
   }));
 

@@ -1228,6 +1228,8 @@ export async function initDatabase(): Promise<void> {
   await ensureColumn('presale_rounds', 'listing_date', 'TEXT');
   await ensureColumn('presale_rounds', 'min_lots', 'INTEGER NOT NULL DEFAULT 1');
   await ensureColumn('presale_rounds', 'max_lots', 'INTEGER NOT NULL DEFAULT 500');
+  await ensureColumn('presale_rounds', 'winning_number', 'TEXT');
+  await ensureColumn('presale_tickets', 'ticket_numbers', 'TEXT');
 
   // Backfill legacy presale_rounds rows where default lot_size/issue_price don't match lot_price
   await db.exec(`
