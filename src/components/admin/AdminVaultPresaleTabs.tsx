@@ -570,6 +570,21 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                             Close Round
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!window.confirm(`Delete ${r.token_symbol} (${r.id})? Any pending tickets will be refunded and all round history removed.`)) return;
+                            runAction(async () => {
+                              const res = await apiFetch<{ tokenSymbol: string; refundedCount: number }>(`/api/admin/presale/rounds/${r.id}`, {
+                                method: 'DELETE',
+                              });
+                              return `Deleted presale round ${res.tokenSymbol} (${res.refundedCount} pending ticket(s) refunded).`;
+                            });
+                          }}
+                          className="px-2.5 py-1.5 border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg font-medium whitespace-nowrap"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>

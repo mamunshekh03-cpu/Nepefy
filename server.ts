@@ -6185,6 +6185,58 @@ async function startServer() {
     res.json({ round: await db.prepare('SELECT * FROM presale_rounds WHERE id = ?').get(round.id) });
   }));
 
+  app.delete('/api/admin/presale/rounds/:id', requireAdmin, ah(async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await db.transaction(async () => {
+        const round = (await db.prepare('SELECT * FROM presale_rounds WHERE id = ?').get(req.params.id)) as any;
+        if (!round) throw new Error('Presale round not found');
+
+        const pendingTickets = (await db
+          .prepare("SELECT * FROM presale_tickets WHERE round_id = ? AND result = 'PENDING'")
+          .all(round.id)) as any[];
+
+        let refundedCount = 0;
+        for (const ticket of pendingTickets) {
+          const refundTotal = Number((Number(ticket.principal_paid || 0) + Number(ticket.fee_paid || 0)).toFixed(2));
+          if (refundTotal > 0) {
+            const user = (await db.prepare('SELECT main_balance FROM users WHERE id = ?').get(ticket.user_id)) as any;
+            if (user) {
+              const nextMain = Number((Number(user.main_balance || 0) + refundTotal).toFixed(2));
+              await db.prepare('UPDATE users SET main_balance = ? WHERE id = ?').run(nextMain, ticket.user_id);
+              await appendLedger(
+                ticket.user_id,
+                'MAIN',
+                'PRESALE_REFUND',
+                refundTotal,
+                nextMain,
+                ticket.id,
+                `Refunded cancelled IPO ${round.token_symbol} (${round.id})`
+              );
+              refundedCount += 1;
+            }
+          }
+        }
+
+        await db.prepare('DELETE FROM presale_tickets WHERE round_id = ?').run(round.id);
+        await db.prepare('DELETE FROM presale_rounds WHERE id = ?').run(round.id);
+
+        return { id: round.id, tokenSymbol: round.token_symbol, refundedCount };
+      })();
+
+      await recordAdminAuditLog({
+        req,
+        actionType: 'PRESALE_ROUND_DELETE',
+        targetType: 'PRESALE_ROUND',
+        targetId: result.id,
+        summary: `Deleted presale round ${result.tokenSymbol} (${result.id}), refunded ${result.refundedCount} pending ticket(s)`,
+      });
+
+      res.json({ deleted: true, ...result });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message || 'Failed to delete presale round' });
+    }
+  }));
+
   app.post('/api/admin/referrals/:id/credit', requireAdmin, ah(async (req, res) => {
     try {
       const updated = await db.transaction(async () => {
