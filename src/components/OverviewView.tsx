@@ -817,61 +817,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
 
       {/* DESKTOP OVERVIEW (100% PRESERVED >= 1024px) */}
       <div className="hidden lg:block space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Overview</h1>
-          <div className="text-sm text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>
-              Account ID :{' '}
-              <span className="font-mono-tabular font-medium text-slate-700">{accountId}</span>
-            </span>
-            <button
-              type="button"
-              onClick={handleCopyId}
-              aria-label="Copy Account ID"
-              title="Copy Account ID"
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
-            >
-              {copiedId ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-              ) : (
-                <Copy className="w-3.5 h-3.5" />
-              )}
-            </button>
-            <span aria-hidden="true">·</span>
-            <span>{user.email}</span>
-            {countryShortCode && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span
-                  title={user.country}
-                  className="font-mono-tabular font-medium text-slate-700"
-                >
-                  {countryShortCode}
-                </span>
-              </>
-            )}
-            <span aria-hidden="true">·</span>
-            {isVerified ? (
-              <span className="inline-flex items-center gap-1 font-medium text-emerald-700 whitespace-nowrap">
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                <span>Verified</span>
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => onNavigate('profile')}
-                title="Complete account verification in Profile & KYC"
-                className="inline-flex items-center gap-1 font-medium text-amber-700 hover:text-amber-800 hover:underline transition-colors cursor-pointer whitespace-nowrap"
-              >
-                <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-                <span>Unverified</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
       {claimMessage && (
         <div className="border border-blue-200 bg-blue-50 text-blue-800 text-xs px-4 py-3 rounded-lg flex items-center justify-between">
           <span>{claimMessage}</span>
@@ -885,11 +830,64 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       <section className="rounded-xl border border-slate-800 bg-[#0F172A] text-white overflow-hidden ring-1 ring-emerald-500/10">
         {/* Top Row: Compact Hero Equity + PnL Metrics */}
         <div className="px-5 py-5 lg:px-7 lg:py-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Estimated Total Equity</span>
+          <div className="space-y-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Overview</h1>
+              <div className="mt-1 text-sm text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>
+                  Account ID:{' '}
+                  <span className="font-mono-tabular font-medium text-slate-200">{accountId}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyId}
+                  aria-label="Copy Account ID"
+                  title="Copy Account ID"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
+                >
+                  {copiedId ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                <span aria-hidden="true">·</span>
+                <span>{user.email}</span>
+                {countryShortCode && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span
+                      title={user.country}
+                      className="font-mono-tabular font-medium text-slate-200"
+                    >
+                      {countryShortCode}
+                    </span>
+                  </>
+                )}
+                <span aria-hidden="true">·</span>
+                {isVerified ? (
+                  <span className="inline-flex items-center gap-1 font-medium text-emerald-400 whitespace-nowrap">
+                    <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                    <span>Verified</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('profile')}
+                    title="Complete account verification in Profile & KYC"
+                    className="inline-flex items-center gap-1 font-medium text-amber-300 hover:text-amber-200 hover:underline transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                    <span>Unverified</span>
+                  </button>
+                )}
+              </div>
             </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span>Estimated Total Equity</span>
+              </div>
             <div className="flex flex-wrap items-baseline gap-2.5">
               <span className="text-3xl lg:text-4xl font-bold tracking-tight font-mono-tabular text-white">
                 ${formatUsd(totalEquity)}
@@ -918,6 +916,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                 </span>
               </span>
             </div>
+          </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:border-l lg:border-slate-800 lg:pl-6">
