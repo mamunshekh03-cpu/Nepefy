@@ -897,27 +897,30 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         </div>
       )}
 
-      {/* Portfolio Equity, Today's PnL & Wallet Strip */}
-      <section className="border border-slate-200 rounded-xl bg-white overflow-hidden">
+      {/* Portfolio Equity Hero — Staking Vaults slate + emerald palette */}
+      <section className="rounded-xl border border-slate-800 bg-[#0F172A] text-white overflow-hidden ring-1 ring-emerald-500/10">
         {/* Top Row: Compact Hero Equity + PnL Metrics */}
-        <div className="px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-slate-500">Estimated Total Equity</div>
+        <div className="px-5 py-5 lg:px-7 lg:py-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>Estimated Total Equity</span>
+            </div>
             <div className="flex flex-wrap items-baseline gap-2.5">
-              <span className="text-3xl font-bold tracking-tight font-mono-tabular text-slate-900">
+              <span className="text-3xl lg:text-4xl font-bold tracking-tight font-mono-tabular text-white">
                 ${formatUsd(totalEquity)}
               </span>
               {countryShortCode && countryShortCode !== 'USD' && (
-                <span className="text-xs font-mono-tabular text-slate-500">
+                <span className="text-xs font-mono-tabular text-slate-400">
                   ≈ {formatFiatAmount(totalEquity * getCurrencyMeta(countryShortCode).referenceRatePerUsdt, countryShortCode)} {countryShortCode}
                 </span>
               )}
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              <span className="text-slate-500">Today&apos;s PnL</span>
+              <span className="text-slate-400">Today&apos;s PnL</span>
               <span
                 className={`inline-flex items-center gap-1 font-semibold font-mono-tabular ${
-                  todayPnl >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  todayPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
                 {todayPnl >= 0 ? (
@@ -933,30 +936,30 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:border-l lg:border-slate-200 lg:pl-6">
+          <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:border-l lg:border-slate-800 lg:pl-6">
             <div>
-              <div className="text-[11px] font-medium text-slate-500">Unrealized PnL</div>
+              <div className="text-[11px] font-medium text-slate-400">Unrealized PnL</div>
               <div
                 className={`mt-1 text-sm font-semibold font-mono-tabular ${
-                  unrealizedPnl >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
                 {formatSignedUsd(unrealizedPnl)}
               </div>
             </div>
             <div>
-              <div className="text-[11px] font-medium text-slate-500">Realized Today</div>
+              <div className="text-[11px] font-medium text-slate-400">Realized Today</div>
               <div
                 className={`mt-1 text-sm font-semibold font-mono-tabular ${
-                  cleanRealizedTodayPnl >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  cleanRealizedTodayPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
                 {formatSignedUsd(cleanRealizedTodayPnl)}
               </div>
             </div>
             <div>
-              <div className="text-[11px] font-medium text-slate-500">Open Positions</div>
-              <div className="mt-1 text-sm font-semibold font-mono-tabular text-slate-900">
+              <div className="text-[11px] font-medium text-slate-400">Open Positions</div>
+              <div className="mt-1 text-sm font-semibold font-mono-tabular text-white">
                 ${formatUsd(totalOpenExposure)}
               </div>
             </div>
@@ -964,76 +967,76 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         </div>
 
         {/* Bottom Row: Compact 5-Column Account Balances */}
-        <div className="border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
-          <div className="px-5 py-4 space-y-1">
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+        <div className="border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-800">
+          <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
               <CryptoIcon symbol="USDT" className="w-6 h-6" />
               <span>Main Balance (USDT)</span>
             </div>
-            <div className="text-xl font-bold font-mono-tabular text-slate-900">
+            <div className="text-xl font-bold font-mono-tabular text-white">
               ${formatUsd(user.main_balance)}
             </div>
-            <div className="text-xs text-slate-500">Available for Spot, P2P &amp; Withdrawals</div>
+            <div className="text-xs text-slate-400">Available for Spot, P2P &amp; Withdrawals</div>
           </div>
 
-          <div className="px-5 py-4 space-y-1 bg-slate-50/40">
+          <div className="px-5 py-4 space-y-1 bg-slate-800/20 transition-colors hover:bg-slate-800/40">
             <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="font-medium text-slate-600">
+              <span className="font-medium text-slate-400">
                 {activeStakedPrincipal > 0 ? 'Staking & Profit' : 'Profit Balance'}
               </span>
               <button
                 type="button"
                 onClick={() => onNavigate('staking')}
-                className="text-blue-600 hover:underline font-medium whitespace-nowrap"
+                className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium whitespace-nowrap"
               >
                 Vaults →
               </button>
             </div>
-            <div className="text-xl font-bold font-mono-tabular text-emerald-600">
+            <div className="text-xl font-bold font-mono-tabular text-emerald-400">
               ${formatUsd(activeStakedPrincipal + Number(user.profit_balance || 0))}
             </div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-400">
               {activeStakedPrincipal > 0
                 ? `$${formatUsd(activeStakedPrincipal)} staked · +$${formatUsd(user.profit_balance || 0)} profit`
                 : 'Daily staking profit · Monthly unlock'}
             </div>
           </div>
 
-          <div className="px-5 py-4 space-y-1">
+          <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
             <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="font-medium text-slate-600">Claimable Wallet</span>
-              <span className="text-slate-400">Yield &amp; Refunds</span>
+              <span className="font-medium text-slate-400">Claimable Wallet</span>
+              <span className="text-slate-500">Yield &amp; Refunds</span>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <div className="text-xl font-bold font-mono-tabular text-slate-900">
+              <div className="text-xl font-bold font-mono-tabular text-white">
                 ${formatUsd(user.claimable_balance)}
               </div>
               <button
                 onClick={handleClaim}
                 disabled={claiming || user.claimable_balance <= 0}
-                className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500 text-white text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                className="h-7 px-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-500 disabled:border disabled:border-slate-700 text-slate-950 text-xs font-semibold rounded-md transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
               >
                 <ArrowDownToLine className="w-3 h-3" />
                 <span>{claiming ? 'Claiming...' : 'Claim'}</span>
               </button>
             </div>
-            <div className="text-xs text-slate-500">Transfer rewards to Main Balance</div>
+            <div className="text-xs text-slate-400">Transfer rewards to Main Balance</div>
           </div>
 
-          <div className="px-5 py-4 space-y-1">
-            <div className="text-xs font-medium text-slate-500">Escrow &amp; Withdrawal Hold</div>
-            <div className="text-xl font-bold font-mono-tabular text-slate-900">
+          <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
+            <div className="text-xs font-medium text-slate-400">Escrow &amp; Withdrawal Hold</div>
+            <div className="text-xl font-bold font-mono-tabular text-white">
               ${formatUsd(user.locked_balance)}
             </div>
-            <div className="text-xs text-slate-500">Locked in pending withdrawals or P2P</div>
+            <div className="text-xs text-slate-400">Locked in pending withdrawals or P2P</div>
           </div>
 
-          <div className="px-5 py-4 space-y-1">
-            <div className="text-xs font-medium text-slate-500">Spot Coin Holdings</div>
-            <div className="text-xl font-bold font-mono-tabular text-slate-900">
+          <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
+            <div className="text-xs font-medium text-slate-400">Spot Coin Holdings</div>
+            <div className="text-xl font-bold font-mono-tabular text-white">
               ${formatUsd(portfolioValue + escrowedLimitSellValue)}
             </div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-400">
               {holdings.length} active asset{holdings.length === 1 ? '' : 's'} marked to live feed
             </div>
           </div>
