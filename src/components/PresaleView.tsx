@@ -873,16 +873,17 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                 <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50/80">
                   <th className="py-3 px-4">Ticket / Date</th>
                   <th className="py-3 px-4">Token</th>
+                  <th className="py-3 px-4 text-center">Lottery No.</th>
                   <th className="py-3 px-4 text-center">Lots / Shares</th>
                   <th className="py-3 px-4 text-right">Paid (Lot + Fee)</th>
                   <th className="py-3 px-4 text-center">Draw Status</th>
-                  <th className="py-3 px-4 text-right">Credited to Claimable</th>
+                  <th className="py-3 px-4 text-right">Credited / Draw Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       <Ticket className="w-7 h-7 mx-auto mb-2 text-slate-300" />
                       {ticketFilter === 'ALL' ? 'No presale tickets yet.' : `No ${ticketFilter.toLowerCase()} tickets.`}
                     </td>
@@ -892,30 +893,13 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     const isWin = t.result === 'WIN';
                     const isLoss = t.result === 'LOSS';
                     const totalPaid = Number(t.principal_paid || 0) + Number(t.fee_paid || 0);
+                    const lotteryNum = t.ticket_numbers?.[0] || '';
+                    const isWinningNum = !!lotteryNum && t.winning_number === lotteryNum;
                     return (
                       <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3 px-4 font-mono-tabular">
                           <div className="font-semibold text-slate-900 text-[11px]">{t.id}</div>
                           <div className="text-[11px] text-slate-400">{formatDateTime(t.created_at)}</div>
-                          {t.ticket_numbers && t.ticket_numbers.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {t.ticket_numbers.map((num) => {
-                                const isWinningNum = t.winning_number && t.winning_number === num;
-                                return (
-                                  <span
-                                    key={num}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                      isWinningNum
-                                        ? 'bg-emerald-600 text-white'
-                                        : 'bg-blue-50 text-blue-700 border border-blue-200'
-                                    }`}
-                                  >
-                                    #{num}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
@@ -925,6 +909,22 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                               {t.token_name && <div className="text-[11px] text-slate-400 truncate max-w-[120px]">{t.token_name}</div>}
                             </div>
                           </div>
+                        </td>
+                        {/* Lottery No. column */}
+                        <td className="py-3 px-4 text-center font-mono-tabular">
+                          {lotteryNum ? (
+                            <span
+                              className={`px-2 py-1 rounded text-[11px] font-bold tracking-wider ${
+                                isWinningNum
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'bg-blue-50 text-blue-700 border border-blue-200'
+                              }`}
+                            >
+                              #{lotteryNum}{isWinningNum ? ' ★' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center font-mono-tabular">
                           <span className="px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-800">{t.lots_count} {t.lots_count === 1 ? 'Lot' : 'Lots'}</span>
@@ -954,7 +954,12 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           )}
                         </td>
                         <td className="py-3 px-4 text-right font-mono-tabular font-bold">
-                          {t.result === 'PENDING' && <span className="text-slate-400 font-normal text-[11px]">Awaiting publish</span>}
+                          {t.result === 'PENDING' && (
+                            <div className="text-right">
+                              <div className="text-slate-500 font-normal text-[11px]">Draw Date</div>
+                              <div className="text-slate-700 font-semibold text-[11px]">{t.draw_date ? formatDateTime(t.draw_date) : '—'}</div>
+                            </div>
+                          )}
                           {isWin && <span className="text-emerald-600">+${formatUsd(t.payout_amount)}</span>}
                           {isLoss && <span className="text-blue-600">+${formatUsd(t.payout_amount)}</span>}
                         </td>

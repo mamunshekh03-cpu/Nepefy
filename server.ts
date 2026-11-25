@@ -4409,7 +4409,7 @@ async function startServer() {
     const rounds = await db.prepare('SELECT * FROM presale_rounds ORDER BY created_at DESC').all();
     const rawTickets = (await db
       .prepare(`
-        SELECT t.*, r.token_symbol, r.token_name, r.lot_price, r.tokens_per_lot, r.projected_win_payout, r.winning_number
+        SELECT t.*, r.token_symbol, r.token_name, r.lot_price, r.tokens_per_lot, r.projected_win_payout, r.winning_number, r.draw_date
         FROM presale_tickets t
         JOIN presale_rounds r ON t.round_id = r.id
         WHERE t.user_id = ?

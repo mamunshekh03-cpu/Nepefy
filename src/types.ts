@@ -495,6 +495,7 @@ export interface PresaleTicket {
   lots_count: number;
   ticket_numbers?: string[];
   winning_number?: string | null;
+  draw_date?: string;
   principal_paid: number;
   fee_paid: number;
   result: 'PENDING' | 'WIN' | 'LOSS';
