@@ -3,7 +3,6 @@ import {
   ArrowDownLeft,
   ArrowDownToLine,
   ArrowLeftRight,
-  ArrowRight,
   ArrowUpRight,
   Check,
   ChevronRight,
@@ -870,21 +869,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               </button>
             )}
           </div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => onNavigate('funding')}
-            className="px-4 py-2 text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg transition-colors whitespace-nowrap shrink-0"
-          >
-            Wallet
-          </button>
-          <button
-            onClick={() => onNavigate('spot')}
-            className="px-4 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
-          >
-            <span>Open Spot Terminal</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
         </div>
       </div>
 
