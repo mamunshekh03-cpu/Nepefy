@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Calendar, CheckCircle2, Clock, Coins, DollarSign, Info, Layers, Sparkles, TrendingUp } from 'lucide-react';
+import { Building2, Calendar, CheckCircle2, Clock, Coins, DollarSign, Info, Layers, RefreshCw, Sparkles, TrendingUp } from 'lucide-react';
 import { apiFetch, formatDateTime, formatUsd } from '../../lib/api';
 import type { PresaleTicket, StakingPosition } from '../../types';
 import type { AdminMetrics, AdminOverviewData, RunActionFn } from './adminTypes';
@@ -244,6 +244,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
 }) => {
   const [newRoundStatus, setNewRoundStatus] = useState<'OPEN' | 'UPCOMING'>('OPEN');
   const [newLotSize, setNewLotSize] = useState('500');
+  const [publishing, setPublishing] = useState(false);
   const [drawRoundId, setDrawRoundId] = useState('');
   const [drawWinningNumber, setDrawWinningNumber] = useState('');
   const [newListingDate, setNewListingDate] = useState(() => {
@@ -269,30 +270,36 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
     <div className="space-y-5">
       {/* Launch New Presale Round Form */}
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          runAction(async () => {
-            await apiFetch('/api/admin/presale/rounds', {
-              method: 'POST',
-              body: JSON.stringify({
-                token_symbol: newTokenSym,
-                token_name: newTokenName,
-                lot_size: calcLotSize,
-                one_lot_price: oneLotCost || 500.0,
-                lot_price: calcSharePrice || 1.0,
-                tokens_per_lot: calcLotSize,
-                projected_win_payout: Number(newWinPayout) || 300.0,
-                total_lots: Number(newTotalLots) || 100000,
-                total_issue_size: calcTotalIssue,
-                listing_date: newListingDate,
-                status: newRoundStatus,
-              }),
+          if (publishing) return;
+          setPublishing(true);
+          try {
+            await runAction(async () => {
+              await apiFetch('/api/admin/presale/rounds', {
+                method: 'POST',
+                body: JSON.stringify({
+                  token_symbol: newTokenSym,
+                  token_name: newTokenName,
+                  lot_size: calcLotSize,
+                  one_lot_price: oneLotCost || 500.0,
+                  lot_price: calcSharePrice || 1.0,
+                  tokens_per_lot: calcLotSize,
+                  projected_win_payout: Number(newWinPayout) || 300.0,
+                  total_lots: Number(newTotalLots) || 100000,
+                  total_issue_size: calcTotalIssue,
+                  listing_date: newListingDate,
+                  status: newRoundStatus,
+                }),
+              });
+              const createdSym = newTokenSym.toUpperCase();
+              setNewTokenSym('');
+              setNewTokenName('');
+              return `Launched new IPO Share round (${createdSym}) as ${newRoundStatus}.`;
             });
-            const createdSym = newTokenSym.toUpperCase();
-            setNewTokenSym('');
-            setNewTokenName('');
-            return `Launched new IPO Share round (${createdSym}) as ${newRoundStatus}.`;
-          });
+          } finally {
+            setPublishing(false);
+          }
         }}
         className="border border-slate-200 rounded-xl bg-white p-5 space-y-4"
       >
@@ -445,10 +452,20 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
 
           <button
             type="submit"
-            className="w-full sm:w-auto h-9 px-6 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-xs whitespace-nowrap shrink-0 flex items-center justify-center gap-1.5"
+            disabled={publishing}
+            className="w-full sm:w-auto h-9 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-wait text-white text-xs font-bold rounded-lg transition-colors shadow-xs whitespace-nowrap shrink-0 flex items-center justify-center gap-1.5"
           >
-            <Coins className="w-3.5 h-3.5" />
-            <span>Launch IPO Round</span>
+            {publishing ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Process for Publish...</span>
+              </>
+            ) : (
+              <>
+                <Coins className="w-3.5 h-3.5" />
+                <span>Launch IPO Round</span>
+              </>
+            )}
           </button>
         </div>
       </form>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, RefreshCw } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, RefreshCw, X } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { SupportChatCenter } from './SupportChatCenter';
 import type {
@@ -685,17 +685,48 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
       {/* Active Full-Width Module Viewport */}
       <div className="min-w-0 space-y-5">
           {notice && (
-            <div
-              className={`border text-xs px-4 py-3 rounded-xl flex items-center justify-between gap-4 ${
-                notice.type === 'ok'
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                  : 'border-red-200 bg-red-50 text-red-700'
-              }`}
-            >
-              <span>{notice.text}</span>
-              <button type="button" onClick={() => setNotice(null)} className="font-medium hover:underline shrink-0">
-                Dismiss
-              </button>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+              <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div
+                  className={`px-5 py-4 flex items-center justify-between border-b ${
+                    notice.type === 'ok' ? 'bg-emerald-50/80 border-emerald-100' : 'bg-red-50/80 border-red-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    {notice.type === 'ok' ? (
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                    )}
+                    <h3 className={`text-sm font-bold ${notice.type === 'ok' ? 'text-emerald-900' : 'text-red-900'}`}>
+                      {notice.type === 'ok' ? 'Published Successfully' : 'Action Failed'}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNotice(null)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/70 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4">
+                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">{notice.text}</p>
+                  <button
+                    type="button"
+                    onClick={() => setNotice(null)}
+                    className={`w-full h-10 rounded-xl text-xs font-bold text-white transition-colors ${
+                      notice.type === 'ok' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-800 hover:bg-slate-900'
+                    }`}
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
