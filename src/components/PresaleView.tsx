@@ -226,13 +226,6 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
     setLotCounts((p) => ({ ...p, [r.id]: String(v) }));
   };
 
-  // User's tickets for the selected round. Match by round id only: multiple rounds can
-  // share a token symbol, and mixing them would show another round's lottery numbers.
-  const selectedRoundTickets = useMemo(() => {
-    if (!r) return [];
-    return tickets.filter((t) => t.round_id === r.id);
-  }, [tickets, r]);
-
   return (
     <div className="space-y-6 pb-12">
 
@@ -718,44 +711,6 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     </div>
                   </div>
 
-                  {/* User's status & 6-digit lottery numbers for this selected IPO */}
-                  {selectedRoundTickets.length > 0 && (
-                    <div className="rounded-xl bg-indigo-50/70 border border-indigo-200/80 px-4 py-3 space-y-2 text-xs">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 text-indigo-900 font-medium">
-                          <BellRing className="w-4 h-4 text-indigo-600 shrink-0" />
-                          <span>
-                            You have <strong>{selectedRoundTickets.length}</strong> ticket(s) in {r.token_symbol} ({selectedRoundTickets.reduce((s, t) => s + t.lots_count, 0)} lots).
-                          </span>
-                        </div>
-                        <span className="text-[11px] font-semibold text-indigo-700">
-                          {selectedRoundTickets.some((t) => t.result === 'WIN')
-                            ? 'Winner Credited!'
-                            : selectedRoundTickets.some((t) => t.result === 'PENDING')
-                            ? 'Awaiting Draw Result'
-                            : 'Principal Refunded'}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[10px] font-semibold text-indigo-700 uppercase tracking-wide mr-1">Your Lot Numbers:</span>
-                        {selectedRoundTickets.flatMap((t) => t.ticket_numbers || []).map((num) => {
-                          const isWinningNum = r.winning_number && r.winning_number === num;
-                          return (
-                            <span
-                              key={num}
-                              className={`px-2 py-0.5 rounded font-mono-tabular text-[11px] font-bold ${
-                                isWinningNum
-                                  ? 'bg-emerald-600 text-white shadow-xs'
-                                  : 'bg-white text-indigo-800 border border-indigo-200'
-                              }`}
-                            >
-                              #{num}{isWinningNum ? ' ★' : ''}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
