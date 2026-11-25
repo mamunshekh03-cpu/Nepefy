@@ -847,7 +847,7 @@ async function startServer() {
     ],
     authRateLimiter
   );
-  app.use(['/api/deposits', '/api/withdrawals', '/api/transfers/send', '/api/trades', '/api/staking', '/api/p2p', '/api/kyc'], (req, res, next) => {
+  app.use(['/api/deposits', '/api/withdrawals', '/api/transfers/send', '/api/trades', '/api/staking', '/api/p2p', '/api/kyc', '/api/presale'], (req, res, next) => {
     if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') {
       financialRateLimiter(req, res, next);
       return;
@@ -4493,7 +4493,16 @@ async function startServer() {
             }
           }
           if (!candidate) {
-            candidate = String(crypto.randomInt(100000, 1000000));
+            // Random space is exhausted for this round — fall back to a sequential free number
+            // instead of issuing a duplicate that would make two tickets win the same draw.
+            for (let n = 100000; n < 1000000; n++) {
+              const free = String(n);
+              if (!usedNumbers.has(free)) {
+                candidate = free;
+                break;
+              }
+            }
+            if (!candidate) throw new Error('No unique 6-digit lot numbers remain for this round');
           }
           usedNumbers.add(candidate);
           lotNumbers.push(candidate);
@@ -6230,6 +6239,8 @@ async function startServer() {
         targetId: result.id,
         summary: `Deleted presale round ${result.tokenSymbol} (${result.id}), refunded ${result.refundedCount} pending ticket(s)`,
       });
+      // The generic /api/admin audit middleware would otherwise log this mutation twice.
+      res.locals.auditLogged = true;
 
       res.json({ deleted: true, ...result });
     } catch (err: any) {
@@ -6861,7 +6872,6 @@ async function startServer() {
       token_name,
       face_value,
       lot_size,
-      issue_price,
       lot_price,
       one_lot_price,
       tokens_per_lot,
@@ -6902,10 +6912,10 @@ async function startServer() {
 
     const numFaceValue = Number(face_value) > 0 ? Number(face_value) : 10.0;
     const numLotSize = Math.floor(Number(lot_size)) > 0 ? Math.floor(Number(lot_size)) : Math.floor(numTokensPerLot) || 50;
-    const rawIssuePrice = Number(issue_price) > 0 ? Number(issue_price) : Number((numLotPrice / numLotSize).toFixed(6));
-    const numIssuePrice = Math.abs(numLotSize * rawIssuePrice - numLotPrice) > 0.02
-      ? Number((numLotPrice / numLotSize).toFixed(6))
-      : rawIssuePrice;
+    // Standardized model: lot_price / issue_price are per-share prices and one lot costs
+    // lot_size * lot_price. The legacy issue_price request field is accepted but not used
+    // to derive a conflicting per-share value.
+    const numIssuePrice = numLotPrice;
     const numTotalIssueSize = Number(total_issue_size) > 0
       ? Number(total_issue_size)
       : Number((numTotalLots * numLotSize * numLotPrice).toFixed(2));

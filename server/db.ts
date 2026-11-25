@@ -1231,6 +1231,14 @@ export async function initDatabase(): Promise<void> {
   await ensureColumn('presale_rounds', 'winning_number', 'TEXT');
   await ensureColumn('presale_tickets', 'ticket_numbers', 'TEXT');
 
+  const findUnusedLotNumber = (used: Set<string>): string | null => {
+    for (let n = 100000; n < 1000000; n++) {
+      const candidate = String(n);
+      if (!used.has(candidate)) return candidate;
+    }
+    return null;
+  };
+
   // Backfill unique 6-digit lottery numbers for legacy presale_tickets without ticket_numbers
   const legacyTickets = (await db
     .prepare("SELECT id, round_id, lots_count FROM presale_tickets WHERE ticket_numbers IS NULL OR ticket_numbers = ''")
@@ -1263,7 +1271,11 @@ export async function initDatabase(): Promise<void> {
             break;
           }
         }
-        if (!candidate) candidate = String(Math.floor(100000 + Math.random() * 900000));
+        if (!candidate) {
+          const free = findUnusedLotNumber(usedSet);
+          if (!free) throw new Error(`No unique 6-digit lot numbers remain for round ${t.round_id}`);
+          candidate = free;
+        }
         usedSet.add(candidate);
         nums.push(candidate);
       }
@@ -1285,8 +1297,24 @@ export async function initDatabase(): Promise<void> {
       } catch {
         nums = [];
       }
+      const roundUsed = new Set<string>();
+      const roundRows = (await db
+        .prepare('SELECT ticket_numbers FROM presale_tickets WHERE round_id = ? AND id <> ?')
+        .all(t.round_id, t.id)) as { ticket_numbers: string | null }[];
+      for (const row of roundRows) {
+        try {
+          const parsed = JSON.parse(row.ticket_numbers || '[]');
+          if (Array.isArray(parsed)) parsed.forEach((n) => roundUsed.add(String(n)));
+        } catch {
+          // ignore malformed legacy values
+        }
+      }
+      for (const n of nums) roundUsed.add(n);
       while (nums.length < count) {
-        nums.push(String(Math.floor(100000 + Math.random() * 900000)));
+        const free = findUnusedLotNumber(roundUsed);
+        if (!free) throw new Error(`No unique 6-digit lot numbers remain for round ${t.round_id}`);
+        roundUsed.add(free);
+        nums.push(free);
       }
       const perPrincipal = Number((Number(t.principal_paid || 0) / count).toFixed(2));
       const perFee = Number((Number(t.fee_paid || 0) / count).toFixed(2));
@@ -1309,14 +1337,17 @@ export async function initDatabase(): Promise<void> {
     }
   }
 
-  // Backfill legacy presale_rounds rows where default lot_size/issue_price don't match lot_price
+  // Normalize legacy presale rounds to the current model: lot_price and issue_price are
+  // per-share prices, one lot = tokens_per_lot shares, total issue = lots * shares * price.
   await db.exec(`
     UPDATE presale_rounds
     SET
       lot_size = CASE WHEN tokens_per_lot >= 1 THEN CAST(ROUND(tokens_per_lot) AS INTEGER) ELSE 1 END,
-      issue_price = CASE WHEN tokens_per_lot > 0 THEN (lot_price / tokens_per_lot) ELSE lot_price END,
-      total_issue_size = CASE WHEN total_issue_size <= 0 THEN (total_lots * lot_price) ELSE total_issue_size END
-    WHERE ABS((lot_size * issue_price) - lot_price) > 0.05 AND tokens_per_lot > 0
+      issue_price = lot_price,
+      total_issue_size = CASE WHEN total_issue_size <= 0 THEN (total_lots * tokens_per_lot * lot_price) ELSE total_issue_size END
+    WHERE ABS(issue_price - lot_price) > 0.0001
+       OR (tokens_per_lot >= 1 AND lot_size <> CAST(ROUND(tokens_per_lot) AS INTEGER))
+       OR total_issue_size <= 0
   `);
 
   // Ensure all Top 30 live market pairs exist

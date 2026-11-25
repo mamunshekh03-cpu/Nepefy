@@ -679,7 +679,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                 }
               );
               setDrawWinningNumber('');
-              return `Declared #${res.winningNumber} as ${res.tokenSymbol} winner! ${res.winCount} ticket(s) won, ${res.lossCount} ticket(s) 100% refunded.`;
+              return `Declared #${res.winningNumber} as ${res.tokenSymbol} winner! ${res.winCount} ticket(s) won, ${res.lossCount} ticket(s) received a principal refund (network fee excluded).`;
             });
           }}
           className="px-4 py-3 border-b border-slate-200 bg-blue-50/40 flex flex-wrap items-center gap-3 text-xs"
@@ -778,25 +778,23 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                           <td colSpan={9} className="px-4 py-4">
                             <div className="w-0 min-w-full">
                             <div className="mb-2 text-xs font-semibold text-slate-700">{group.userName}&apos;s IPO purchases</div>
-                            <div className="w-full min-w-0 bg-white text-left">
-                              <div className="grid w-full grid-cols-7 border-b border-slate-200 text-[11px] font-medium text-slate-500">
-                                <div className="min-w-0 px-3 py-2.5 text-left">IPO / Ticket</div>
-                                <div className="min-w-0 px-3 py-2.5 text-left">Purchased</div>
-                                <div className="min-w-0 px-3 py-2.5 text-left">6-Digit Lot Numbers</div>
-                                <div className="min-w-0 px-3 py-2.5 text-right">Lots</div>
-                                <div className="min-w-0 px-3 py-2.5 text-right">Principal</div>
-                                <div className="min-w-0 px-3 py-2.5 text-left">Result</div>
-                                <div className="min-w-0 px-3 py-2.5 text-right">Admin Settlement</div>
-                              </div>
-                              <div className="divide-y divide-slate-100">
+                            <div className="grid w-full grid-cols-[repeat(7,max-content)] justify-between gap-x-6 bg-white text-left">
+                              <div className="whitespace-nowrap px-1 py-2.5 text-[11px] font-medium text-slate-500">IPO / Ticket</div>
+                              <div className="whitespace-nowrap px-1 py-2.5 text-[11px] font-medium text-slate-500">Purchased</div>
+                              <div className="whitespace-nowrap px-1 py-2.5 text-[11px] font-medium text-slate-500">6-Digit Lot Numbers</div>
+                              <div className="whitespace-nowrap px-1 py-2.5 text-right text-[11px] font-medium text-slate-500">Lots</div>
+                              <div className="whitespace-nowrap px-1 py-2.5 text-right text-[11px] font-medium text-slate-500">Principal</div>
+                              <div className="whitespace-nowrap px-1 py-2.5 text-[11px] font-medium text-slate-500">Result</div>
+                              <div className="whitespace-nowrap px-1 py-2.5 text-right text-[11px] font-medium text-slate-500">Admin Settlement</div>
+                              <div className="col-span-7 border-b border-slate-200" />
                                 {group.tickets.map((ticket) => (
-                                  <div key={ticket.id} className="grid w-full grid-cols-7">
-                                    <div className="min-w-0 px-3 py-3">
+                                  <React.Fragment key={ticket.id}>
+                                    <div className="px-1 py-3">
                                       <div className="font-semibold text-slate-900">{ticket.token_symbol}</div>
                                       <div className="break-all font-mono-tabular text-[10px] text-slate-500">{ticket.id}</div>
                                     </div>
-                                    <div className="min-w-0 px-3 py-3 font-mono-tabular text-slate-500">{formatDateTime(ticket.created_at)}</div>
-                                    <div className="min-w-0 px-3 py-3">
+                                    <div className="whitespace-nowrap px-1 py-3 font-mono-tabular text-slate-500">{formatDateTime(ticket.created_at)}</div>
+                                    <div className="px-1 py-3">
                                       {ticket.ticket_numbers && ticket.ticket_numbers.length > 0 ? (
                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                           {ticket.ticket_numbers.map((num, index) => {
@@ -831,12 +829,12 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                                         <span className="text-slate-400">—</span>
                                       )}
                                     </div>
-                                    <div className="min-w-0 px-3 py-3 text-right font-mono-tabular">{ticket.lots_count}</div>
-                                    <div className="min-w-0 px-3 py-3 text-right font-mono-tabular font-semibold text-slate-900">
+                                    <div className="whitespace-nowrap px-1 py-3 text-right font-mono-tabular">{ticket.lots_count}</div>
+                                    <div className="whitespace-nowrap px-1 py-3 text-right font-mono-tabular font-semibold text-slate-900">
                                       ${formatUsd(ticket.principal_paid)}
                                       <div className="text-[10px] font-normal text-slate-400">Fee ${formatUsd(ticket.fee_paid)}</div>
                                     </div>
-                                    <div className="min-w-0 px-3 py-3 font-semibold">
+                                    <div className="whitespace-nowrap px-1 py-3 font-semibold">
                                       <span
                                         className={
                                           ticket.result === 'WIN'
@@ -849,7 +847,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                                         {ticket.result}
                                       </span>
                                     </div>
-                                    <div className="min-w-0 px-3 py-3 text-right">
+                                    <div className="whitespace-nowrap px-1 py-3 text-right">
                                       {ticket.result === 'PENDING' ? (
                                         <div className="inline-flex max-w-full flex-wrap items-center justify-end gap-x-2 gap-y-1">
                                           <button
@@ -888,9 +886,9 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
                                         <span className="font-mono-tabular text-slate-500">Paid ${formatUsd(ticket.payout_amount)}</span>
                                       )}
                                     </div>
-                                  </div>
+                                    <div className="col-span-7 border-b border-slate-100" />
+                                  </React.Fragment>
                                 ))}
-                              </div>
                             </div>
                             </div>
                           </td>

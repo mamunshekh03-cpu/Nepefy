@@ -226,10 +226,11 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
     setLotCounts((p) => ({ ...p, [r.id]: String(v) }));
   };
 
-  // User's tickets for the selected round
+  // User's tickets for the selected round. Match by round id only: multiple rounds can
+  // share a token symbol, and mixing them would show another round's lottery numbers.
   const selectedRoundTickets = useMemo(() => {
     if (!r) return [];
-    return tickets.filter((t) => t.round_id === r.id || t.token_symbol === r.token_symbol);
+    return tickets.filter((t) => t.round_id === r.id);
   }, [tickets, r]);
 
   return (
@@ -797,7 +798,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       <span>Win Lottery (Jackpot Payout)</span>
                     </div>
                     <p className="text-[11px] text-emerald-800 leading-relaxed">
-                      Each winning lot receives <strong>+${formatUsd(r.projected_win_payout)}</strong> cash jackpot and <strong>{lotSize} {r.token_symbol}</strong> credited directly to your Claimable Wallet.
+                      Each winning lot receives <strong>+${formatUsd(r.projected_win_payout)}</strong> cash jackpot in your Claimable Wallet and <strong>{lotSize} {r.token_symbol}</strong> in your coin holdings.
                     </p>
                   </div>
 
@@ -949,7 +950,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                           )}
                           {isLoss && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600">
-                              <ShieldCheck className="w-3 h-3" /> 100% Refunded
+                              <ShieldCheck className="w-3 h-3" /> Principal Refunded
                             </span>
                           )}
                         </td>
