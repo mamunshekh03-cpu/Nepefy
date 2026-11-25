@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowRight, CheckCircle2, RefreshCw, X } from 'lucide-react';
+import { NepefyLogo } from './NepefyLogo';
 import { apiFetch } from '../lib/api';
 import { SupportChatCenter } from './SupportChatCenter';
 import type {
