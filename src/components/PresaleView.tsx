@@ -656,7 +656,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       <span>IPO Purchase</span>
                     </div>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Main Balance থেকে প্রতি লট (<strong>{lotSize}</strong> শেয়ার = <strong>${formatUsd(oneLotPrice)}</strong>) এবং <strong>${formatUsd(feePerShare)}</strong> নেটওয়ার্ক ফি দিয়ে সাবস্ক্রাইব করলে সাথে সাথে টিকিট ইস্যু হয়।
+                      Subscribe from your Main Balance at <strong>${formatUsd(oneLotPrice)}</strong> per lot (<strong>{lotSize}</strong> shares) plus <strong>${formatUsd(feePerShare)}</strong> network fee. Your ticket is issued instantly.
                     </p>
                   </div>
 
@@ -667,7 +667,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       <span>Publish &amp; Lottery Draw</span>
                     </div>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
-                      নির্ধারিত তারিখ (<strong>{formatDateTime(r.draw_date)}</strong>) বা রাউন্ড ক্লোজ হলে অফিশিয়াল ফলাফল পাবলিশ ও লটারি ড্র সম্পন্ন হয়।
+                      Official results are published and the lottery draw is executed on <strong>{formatDateTime(r.draw_date)}</strong> or when the round closes.
                     </p>
                   </div>
 
@@ -675,10 +675,10 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                   <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-3.5 space-y-1">
                     <div className="font-bold text-emerald-900 flex items-center gap-1.5">
                       <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center font-bold">3</span>
-                      <span>লটারি জিতলে (Win Payout)</span>
+                      <span>Win Lottery (Jackpot Payout)</span>
                     </div>
                     <p className="text-[11px] text-emerald-800 leading-relaxed">
-                      বিজয়ী প্রতিটি লটে <strong>+${formatUsd(r.projected_win_payout)}</strong> ক্যাশ জ্যাকপট এবং <strong>{lotSize} {r.token_symbol}</strong> সরাসরি আপনার Claimable Wallet-এ যুক্ত হয়।
+                      Each winning lot receives <strong>+${formatUsd(r.projected_win_payout)}</strong> cash jackpot and <strong>{lotSize} {r.token_symbol}</strong> credited directly to your Claimable Wallet.
                     </p>
                   </div>
 
@@ -686,10 +686,10 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                   <div className="rounded-xl border border-blue-200/80 bg-blue-50/50 p-3.5 space-y-1">
                     <div className="font-bold text-blue-900 flex items-center gap-1.5">
                       <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">4</span>
-                      <span>১০০% রিফান্ড (If Not Drawn)</span>
+                      <span>100% Principal Refund</span>
                     </div>
                     <p className="text-[11px] text-blue-800 leading-relaxed">
-                      লটারি না জিতলেও আপনার মূল টাকা (প্রতি লট <strong>${formatUsd(oneLotPrice)}</strong>) ১০০% স্বয়ংক্রিয়ভাবে Claimable Wallet-এ রিফান্ড হয়ে যাবে।
+                      If not drawn, 100% of your principal (<strong>${formatUsd(oneLotPrice)}</strong> per lot) is automatically refunded to your Claimable Wallet.
                     </p>
                   </div>
                 </div>
