@@ -4438,14 +4438,16 @@ async function startServer() {
           throw new Error(`Only ${round.total_lots - round.sold_lots} lots remaining`);
         }
 
-        const principalPaid = Number((lots * round.lot_price).toFixed(2));
+        const lotSize = Math.max(1, Number(round.tokens_per_lot || round.lot_size || 1));
+        const totalShares = lots * lotSize;
+        const principalPaid = Number((totalShares * round.lot_price).toFixed(2));
         const settings = await getPlatformSettings();
         const rawFee =
           round.network_fee !== null && round.network_fee !== undefined
             ? Number(round.network_fee)
             : settings.presaleNetworkFeeUsd;
-        const feePerShare = Number((Number.isFinite(rawFee) ? rawFee : 0.10).toFixed(2));
-        const feePaid = Number((lots * feePerShare).toFixed(2));
+        const feePerLot = Number((Number.isFinite(rawFee) ? rawFee : 0.10).toFixed(2));
+        const feePaid = Number((lots * feePerLot).toFixed(2));
         const totalCost = Number((principalPaid + feePaid).toFixed(2));
 
         const user = (await db.prepare('SELECT * FROM users WHERE id = ?').get(userId)) as any;

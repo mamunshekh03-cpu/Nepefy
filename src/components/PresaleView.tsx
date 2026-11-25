@@ -107,10 +107,12 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
     setBusyId(round.id);
     const lots = Math.max(1, Math.floor(Number(lotCounts[round.id] || 1)));
     const remaining = Math.max(0, round.total_lots - round.sold_lots);
-    const lotPrice = Number(round.lot_price || 0);
-    const feePerShare = Number(round.network_fee ?? 0.10);
-    const networkFee = Number((lots * feePerShare).toFixed(2));
-    const principal = Number((lots * lotPrice).toFixed(2));
+    const lotSize = Math.max(1, Number(round.tokens_per_lot || round.lot_size || 50));
+    const totalShares = lots * lotSize;
+    const sharePrice = Number(round.lot_price || 0);
+    const feePerLot = Number(round.network_fee ?? 0.10);
+    const networkFee = Number((lots * feePerLot).toFixed(2));
+    const principal = Number((totalShares * sharePrice).toFixed(2));
     const totalCost = Number((principal + networkFee).toFixed(2));
 
     if (round.status !== 'OPEN' || remaining <= 0) {
@@ -119,7 +121,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
       return;
     }
     if (lots > remaining) {
-      setNotice({ type: 'err', text: `Only ${remaining} share(s) remaining.` });
+      setNotice({ type: 'err', text: `Only ${remaining} lot(s) remaining.` });
       setBusyId(null);
       return;
     }
@@ -139,7 +141,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
       });
       setNotice({
         type: 'ok',
-        text: `Subscribed ${lots} share(s) of ${round.token_symbol}! $${formatUsd(principal)} lot price + $${formatUsd(networkFee)} network fee deducted. Ticket is now Pending Draw.`,
+        text: `Subscribed ${lots} lot(s) (${totalShares} shares) of ${round.token_symbol}! $${formatUsd(principal)} lot price + $${formatUsd(networkFee)} network fee deducted.`,
       });
       await Promise.all([loadPresale(false), onRefresh()]);
     } catch (err: any) {
@@ -171,12 +173,14 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
   const remaining = r ? Math.max(0, r.total_lots - r.sold_lots) : 0;
   const lotPrice = r ? Number(r.lot_price || 0) : 0;
   const feePerShare = r ? Number(r.network_fee ?? 0.10) : 0.10;
+  const lotSize = r ? Math.max(1, Number(r.tokens_per_lot || r.lot_size || 50)) : 50;
+  const totalShares = lots * lotSize;
+  const oneLotPrice = Number((lotSize * lotPrice).toFixed(2));
   const networkFee = Number((lots * feePerShare).toFixed(2));
-  const principal = Number((lots * lotPrice).toFixed(2));
+  const principal = Number((totalShares * lotPrice).toFixed(2));
   const totalCost = Number((principal + networkFee).toFixed(2));
   const percentSold = r && r.total_lots > 0 ? Math.min(100, Math.round((r.sold_lots / r.total_lots) * 100)) : 0;
-  const lotSize = r ? (r.tokens_per_lot || r.lot_size || 50) : 50;
-  const totalIssueSize = r ? (r.total_issue_size && r.total_issue_size > 0 ? r.total_issue_size : r.total_lots * lotPrice) : 0;
+  const totalIssueSize = r ? (r.total_issue_size && r.total_issue_size > 0 ? r.total_issue_size : r.total_lots * oneLotPrice) : 0;
   const canAfford = user.main_balance >= totalCost;
   const isClosed = !r || r.status !== 'OPEN' || remaining <= 0;
   const exceedsRemaining = !isClosed && lots > remaining;
@@ -189,7 +193,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
 
   const setMaxAffordable = () => {
     if (!r) return;
-    const unit = lotPrice + feePerShare;
+    const unit = oneLotPrice + feePerShare;
     if (unit <= 0) return;
     const v = Math.min(remaining, Math.max(1, Math.floor(user.main_balance / unit)));
     setLotCounts((p) => ({ ...p, [r.id]: String(v) }));
@@ -421,8 +425,8 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     {/* Quantity selector */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs text-slate-600">
-                        <span className="font-semibold">Shares to Buy</span>
-                        <span className="text-slate-400">Available: <strong className="text-slate-700">{remaining}</strong></span>
+                        <span className="font-semibold">Lots to Buy <span className="font-normal text-slate-400">(1 Lot = {lotSize} Shares)</span></span>
+                        <span className="text-slate-400">Available: <strong className="text-slate-700">{remaining} Lots</strong></span>
                       </div>
 
                       <div className="flex items-center border border-slate-200 rounded-xl bg-white overflow-hidden h-10">
@@ -484,13 +488,13 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                         <span className="font-mono-tabular font-semibold text-slate-900">$ {formatUsd(lotPrice)}</span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600">
-                        <span>Lot Qty</span>
-                        <span className="font-mono-tabular font-semibold text-slate-900">{lots}</span>
+                        <span>Lot Qty {lots > 1 ? `(${lots} Lots × ${lotSize})` : ''}</span>
+                        <span className="font-mono-tabular font-semibold text-slate-900">{totalShares}</span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600">
                         <span>Lot Price</span>
                         <span className="font-mono-tabular font-semibold text-slate-900">
-                          <span className="text-slate-500 font-normal">${formatUsd(lotPrice)} × {lots} = </span>$ {formatUsd(principal)}
+                          <span className="text-slate-500 font-normal">${formatUsd(lotPrice)} × {totalShares} = </span>$ {formatUsd(principal)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600">
@@ -507,7 +511,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     {exceedsRemaining && (
                       <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        Only <strong>{remaining}</strong> share(s) left.
+                        Only <strong>{remaining}</strong> lot(s) left.
                       </div>
                     )}
                     {!canAfford && !exceedsRemaining && (
@@ -531,7 +535,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       ) : !canAfford ? (
                         <span>Insufficient Balance</span>
                       ) : (
-                        <><span>Subscribe {lots} Share{lots > 1 ? 's' : ''} · ${formatUsd(totalCost)}</span><ArrowRight className="w-4 h-4" /></>
+                        <><span>Subscribe {lots} Lot{lots > 1 ? 's' : ''} ({totalShares} Shares) · ${formatUsd(totalCost)}</span><ArrowRight className="w-4 h-4" /></>
                       )}
                     </button>
                   </>
@@ -579,7 +583,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     <div className="flex justify-between items-center text-xs text-slate-600">
                       <span className="font-medium">Subscription Progress</span>
                       <span className="font-mono-tabular font-semibold text-slate-900">
-                        {r.sold_lots} / {r.total_lots} shares <span className="text-blue-600">({percentSold}%)</span>
+                        {r.sold_lots} / {r.total_lots} lots <span className="text-blue-600">({percentSold}%)</span>
                       </span>
                     </div>
                     <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
@@ -590,7 +594,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     </div>
                     <div className="flex justify-between text-[11px] text-slate-400">
                       <span className={remaining > 0 ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium'}>
-                        {remaining > 0 ? `${remaining} shares remaining` : 'Sold Out'}
+                        {remaining > 0 ? `${remaining} lots remaining` : 'Sold Out'}
                       </span>
                       <span>Total Issue: ${formatUsd(totalIssueSize)}</span>
                     </div>
@@ -599,13 +603,13 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                   {/* Share Specs Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50/60">
                     <div className="px-3.5 py-3 text-center">
-                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Per Share Price</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Per Share</div>
                       <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">${formatUsd(lotPrice)}</div>
                     </div>
                     <div className="px-3.5 py-3 text-center">
-                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Lot Size</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">1 Lot ({lotSize} Shares)</div>
                       <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-blue-600">
-                        {lotSize} <span className="text-xs text-slate-500">{r.token_symbol}</span>
+                        ${formatUsd(oneLotPrice)}
                       </div>
                     </div>
                     <div className="px-3.5 py-3 text-center">
@@ -614,7 +618,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     </div>
                     <div className="px-3.5 py-3 text-center">
                       <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Network Fee</div>
-                      <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-700">${formatUsd(feePerShare)}/share</div>
+                      <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-700">${formatUsd(feePerShare)}/lot</div>
                     </div>
                   </div>
 
@@ -624,7 +628,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       <div className="flex items-center gap-2 text-indigo-900 font-medium">
                         <BellRing className="w-4 h-4 text-indigo-600 shrink-0" />
                         <span>
-                          You have <strong>{selectedRoundTickets.length}</strong> ticket(s) in {r.token_symbol} ({selectedRoundTickets.reduce((s, t) => s + t.lots_count, 0)} shares).
+                          You have <strong>{selectedRoundTickets.length}</strong> ticket(s) in {r.token_symbol} ({selectedRoundTickets.reduce((s, t) => s + t.lots_count, 0)} lots).
                         </span>
                       </div>
                       <span className="text-[11px] font-semibold text-indigo-700">
@@ -656,7 +660,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       <span>IPO Purchase</span>
                     </div>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Main Balance থেকে প্রতি শেয়ার <strong>${formatUsd(lotPrice)}</strong> এবং <strong>${formatUsd(feePerShare)}</strong> নেটওয়ার্ক ফি দিয়ে সাবস্ক্রাইব করলে সাথে সাথে টিকিট ইস্যু হয়।
+                      Main Balance থেকে প্রতি লট (<strong>{lotSize}</strong> শেয়ার = <strong>${formatUsd(oneLotPrice)}</strong>) এবং <strong>${formatUsd(feePerShare)}</strong> নেটওয়ার্ক ফি দিয়ে সাবস্ক্রাইব করলে সাথে সাথে টিকিট ইস্যু হয়।
                     </p>
                   </div>
 
@@ -678,7 +682,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       <span>লটারি জিতলে (Win Payout)</span>
                     </div>
                     <p className="text-[11px] text-emerald-800 leading-relaxed">
-                      বিজয়ী প্রতিটি শেয়ারে <strong>+${formatUsd(r.projected_win_payout)}</strong> ক্যাশ জ্যাকপট এবং <strong>{lotSize} {r.token_symbol}</strong> সরাসরি আপনার Claimable Wallet-এ যুক্ত হয়।
+                      বিজয়ী প্রতিটি লটে <strong>+${formatUsd(r.projected_win_payout)}</strong> ক্যাশ জ্যাকপট এবং <strong>{lotSize} {r.token_symbol}</strong> সরাসরি আপনার Claimable Wallet-এ যুক্ত হয়।
                     </p>
                   </div>
 
@@ -689,7 +693,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       <span>১০০% রিফান্ড (If Not Drawn)</span>
                     </div>
                     <p className="text-[11px] text-blue-800 leading-relaxed">
-                      লটারি না জিতলেও আপনার মূল টাকা (প্রতি শেয়ার <strong>${formatUsd(lotPrice)}</strong>) ১০০% স্বয়ংক্রিয়ভাবে Claimable Wallet-এ রিফান্ড হয়ে যাবে।
+                      লটারি না জিতলেও আপনার মূল টাকা (প্রতি লট <strong>${formatUsd(oneLotPrice)}</strong>) ১০০% স্বয়ংক্রিয়ভাবে Claimable Wallet-এ রিফান্ড হয়ে যাবে।
                     </p>
                   </div>
                 </div>

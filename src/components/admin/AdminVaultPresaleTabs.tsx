@@ -257,9 +257,11 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
 
   const calcTotalLots = Number(newTotalLots) || 0;
   const calcLotPrice = Number(newLotPrice) || 0;
-  const calcTotalIssue = calcTotalLots * calcLotPrice;
+  const calcLotSize = Number(newLotSize) || 50;
+  const calcTotalIssue = Number((calcTotalLots * calcLotSize * calcLotPrice).toFixed(2));
   const calcWinPayout = Number(newWinPayout) || 0;
-  const winMultiplier = calcLotPrice > 0 ? (calcWinPayout / calcLotPrice).toFixed(1) : '0';
+  const oneLotCost = calcLotSize * calcLotPrice;
+  const winMultiplier = oneLotCost > 0 ? (calcWinPayout / oneLotCost).toFixed(1) : '0';
   const adminNetworkFee = data.platformSettings?.presaleNetworkFeeUsd ?? 0.10;
 
   return (
