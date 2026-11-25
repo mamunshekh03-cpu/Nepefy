@@ -243,7 +243,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
   runAction,
 }) => {
   const [newRoundStatus, setNewRoundStatus] = useState<'OPEN' | 'UPCOMING'>('OPEN');
-  const [newLotSize, setNewLotSize] = useState('50');
+  const [newLotSize, setNewLotSize] = useState('500');
   const [drawRoundId, setDrawRoundId] = useState('');
   const [drawWinningNumber, setDrawWinningNumber] = useState('');
   const [newListingDate, setNewListingDate] = useState(() => {
@@ -258,7 +258,7 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
 
   const calcTotalLots = Number(newTotalLots) || 0;
   const calcLotPrice = Number(newLotPrice) || 0;
-  const calcLotSize = Number(newLotSize) || 50;
+  const calcLotSize = Number(newLotSize) || 500;
   const calcTotalIssue = Number((calcTotalLots * calcLotSize * calcLotPrice).toFixed(2));
   const calcWinPayout = Number(newWinPayout) || 0;
   const oneLotCost = calcLotSize * calcLotPrice;
@@ -277,10 +277,10 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               body: JSON.stringify({
                 token_symbol: newTokenSym,
                 token_name: newTokenName,
-                lot_size: Number(newLotSize) || 50,
-                lot_price: Number(newLotPrice) || 1.20,
-                tokens_per_lot: Number(newTokensPerLot) || Number(newLotSize) || 50,
-                projected_win_payout: Number(newWinPayout) || 180.0,
+                lot_size: Number(newLotSize) || 500,
+                lot_price: Number(newLotPrice) || 1.00,
+                tokens_per_lot: Number(newTokensPerLot) || Number(newLotSize) || 500,
+                projected_win_payout: Number(newWinPayout) || 300.0,
                 total_lots: Number(newTotalLots) || 100000,
                 total_issue_size: calcTotalIssue,
                 listing_date: newListingDate,
@@ -367,9 +367,9 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               value={newLotPrice}
               onChange={(e) => setNewLotPrice(e.target.value)}
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-blue-300 bg-blue-50/20 font-bold text-blue-900 rounded-lg focus:outline-none focus:border-blue-600"
-              placeholder="1.50"
+              placeholder="1.00"
             />
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Cost per 1 share</span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Lot Price: ${formatUsd(oneLotCost)} (${formatUsd(calcLotPrice)} × {calcLotSize})</span>
           </div>
 
           <div>
@@ -382,13 +382,13 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               value={newLotSize}
               onChange={(e) => handleLotSizeChange(e.target.value)}
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600"
-              placeholder="50"
+              placeholder="500"
             />
             <span className="text-[10px] text-slate-500 mt-0.5 block">Shares included in 1 lot</span>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Win Payout ($)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Estimate Win Rate (1 Lot $)</label>
             <input
               type="number"
               required
@@ -397,13 +397,13 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               value={newWinPayout}
               onChange={(e) => setNewWinPayout(e.target.value)}
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-emerald-300 bg-emerald-50/20 font-bold text-emerald-800 rounded-lg focus:outline-none focus:border-emerald-600"
-              placeholder="180.00"
+              placeholder="300.00"
             />
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Cash bonus per winning lot</span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">1 Lot win payout: ${formatUsd(calcWinPayout)}</span>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Total Lots (Supply)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Supply Lot Size</label>
             <input
               type="number"
               required
@@ -412,9 +412,9 @@ export const AdminPresaleTab: React.FC<AdminPresaleTabProps> = ({
               value={newTotalLots}
               onChange={(e) => setNewTotalLots(e.target.value)}
               className="w-full h-9 px-3 text-xs font-mono-tabular border border-slate-200 rounded-lg focus:outline-none focus:border-blue-600 font-bold"
-              placeholder="1000"
+              placeholder="100000"
             />
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Total lots available</span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Total lots available ({calcTotalLots.toLocaleString()})</span>
           </div>
         </div>
 

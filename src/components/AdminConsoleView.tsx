@@ -143,10 +143,10 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
   // Coin Presale form & filters
   const [newTokenSym, setNewTokenSym] = useState('');
   const [newTokenName, setNewTokenName] = useState('');
-  const [newLotPrice, setNewLotPrice] = useState('75');
-  const [newTokensPerLot, setNewTokensPerLot] = useState('150');
-  const [newWinPayout, setNewWinPayout] = useState('180');
-  const [newTotalLots, setNewTotalLots] = useState('400');
+  const [newLotPrice, setNewLotPrice] = useState('1.00');
+  const [newTokensPerLot, setNewTokensPerLot] = useState('500');
+  const [newWinPayout, setNewWinPayout] = useState('300');
+  const [newTotalLots, setNewTotalLots] = useState('100000');
   const [ticketFilter, setTicketFilter] = useState<'ALL' | 'PENDING' | 'WIN' | 'LOSS'>('ALL');
 
   // Rewards, Referral & Jackpot state
