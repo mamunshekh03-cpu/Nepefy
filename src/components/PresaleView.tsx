@@ -481,12 +481,8 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       </div>
                     </div>
 
-                    {/* Clear Price Breakdown: Per Share, Lot Qty, Lot Price, Network Fee */}
+                    {/* Clear Price Breakdown: Lot Qty, Lot Price, Network Fee */}
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
-                      <div className="flex justify-between items-center text-slate-600">
-                        <span>Per Share</span>
-                        <span className="font-mono-tabular font-semibold text-slate-900">$ {formatUsd(lotPrice)}</span>
-                      </div>
                       <div className="flex justify-between items-center text-slate-600">
                         <span>Lot Qty {lots > 1 ? `(${lots} Lots × ${lotSize})` : ''}</span>
                         <span className="font-mono-tabular font-semibold text-slate-900">{totalShares}</span>
