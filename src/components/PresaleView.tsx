@@ -559,13 +559,13 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                     {/* Clear Price Breakdown: Lot Qty, Lot Price, Network Fee */}
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
                       <div className="flex justify-between items-center text-slate-600">
-                        <span>Lot Qty {lots > 1 ? `(${lots} Lots × ${lotSize})` : ''}</span>
-                        <span className="font-mono-tabular font-semibold text-slate-900">{totalShares}</span>
+                        <span>Lot Qty</span>
+                        <span className="font-mono-tabular font-semibold text-slate-900">{lots} {lots > 1 ? `Lots × ${lotSize} = ${totalShares} Shares` : `Lot = ${lotSize} Shares`}</span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600">
                         <span>Lot Price</span>
                         <span className="font-mono-tabular font-semibold text-slate-900">
-                          <span className="text-slate-500 font-normal">${formatUsd(lotPrice)} × {totalShares} = </span>$ {formatUsd(principal)}
+                          <span className="text-slate-500 font-normal">${formatUsd(lotPrice)} × {lotSize} = </span>${formatUsd(oneLotPrice)}{lots > 1 ? <span className="text-slate-500 font-normal"> × {lots}</span> : ''}
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600">
@@ -674,7 +674,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                   {/* Share Specs Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50/60">
                     <div className="px-3.5 py-3 text-center">
-                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Per Share</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Share Price</div>
                       <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">${formatUsd(lotPrice)}</div>
                     </div>
                     <div className="px-3.5 py-3 text-center">

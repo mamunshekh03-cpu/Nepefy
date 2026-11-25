@@ -1231,6 +1231,46 @@ export async function initDatabase(): Promise<void> {
   await ensureColumn('presale_rounds', 'winning_number', 'TEXT');
   await ensureColumn('presale_tickets', 'ticket_numbers', 'TEXT');
 
+  // Backfill unique 6-digit lottery numbers for legacy presale_tickets without ticket_numbers
+  const legacyTickets = (await db
+    .prepare("SELECT id, round_id, lots_count FROM presale_tickets WHERE ticket_numbers IS NULL OR ticket_numbers = ''")
+    .all()) as { id: string; round_id: string; lots_count: number }[];
+  if (legacyTickets.length > 0) {
+    const usedByRound = new Map<string, Set<string>>();
+    const allTicketRows = (await db
+      .prepare('SELECT round_id, ticket_numbers FROM presale_tickets WHERE ticket_numbers IS NOT NULL')
+      .all()) as { round_id: string; ticket_numbers: string }[];
+    for (const row of allTicketRows) {
+      if (!usedByRound.has(row.round_id)) usedByRound.set(row.round_id, new Set());
+      try {
+        const parsed = JSON.parse(row.ticket_numbers);
+        if (Array.isArray(parsed)) parsed.forEach((n) => usedByRound.get(row.round_id)!.add(String(n)));
+      } catch {
+        // ignore malformed
+      }
+    }
+    for (const t of legacyTickets) {
+      if (!usedByRound.has(t.round_id)) usedByRound.set(t.round_id, new Set());
+      const usedSet = usedByRound.get(t.round_id)!;
+      const count = Math.max(1, Number(t.lots_count || 1));
+      const nums: string[] = [];
+      for (let i = 0; i < count; i++) {
+        let candidate = '';
+        for (let attempt = 0; attempt < 80; attempt++) {
+          const rand = String(Math.floor(100000 + Math.random() * 900000));
+          if (!usedSet.has(rand)) {
+            candidate = rand;
+            break;
+          }
+        }
+        if (!candidate) candidate = String(Math.floor(100000 + Math.random() * 900000));
+        usedSet.add(candidate);
+        nums.push(candidate);
+      }
+      await db.prepare('UPDATE presale_tickets SET ticket_numbers = ? WHERE id = ?').run(JSON.stringify(nums), t.id);
+    }
+  }
+
   // Backfill legacy presale_rounds rows where default lot_size/issue_price don't match lot_price
   await db.exec(`
     UPDATE presale_rounds
