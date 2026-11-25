@@ -969,9 +969,9 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         {/* Bottom Row: Compact 5-Column Account Balances */}
         <div className="border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-800">
           <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
+            <div className="flex items-center gap-2 min-h-[32px] text-xs font-medium text-slate-400">
               <CryptoIcon symbol="USDT" className="w-6 h-6" />
-              <span>Main Balance (USDT)</span>
+              <span>Main Balance</span>
             </div>
             <div className="text-xl font-bold font-mono-tabular text-white">
               ${formatUsd(user.main_balance)}
@@ -980,7 +980,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </div>
 
           <div className="px-5 py-4 space-y-1 bg-slate-800/20 transition-colors hover:bg-slate-800/40">
-            <div className="flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center justify-between gap-2 min-h-[32px] text-xs">
               <span className="font-medium text-slate-400">
                 {activeStakedPrincipal > 0 ? 'Staking & Profit' : 'Profit Balance'}
               </span>
@@ -1003,9 +1003,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </div>
 
           <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
-            <div className="flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center justify-between gap-2 min-h-[32px] text-xs">
               <span className="font-medium text-slate-400">Claimable Wallet</span>
-              <span className="text-slate-500">Yield &amp; Refunds</span>
             </div>
             <div className="flex items-center justify-between gap-2">
               <div className="text-xl font-bold font-mono-tabular text-white">
@@ -1024,7 +1023,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </div>
 
           <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
-            <div className="text-xs font-medium text-slate-400">Escrow &amp; Withdrawal Hold</div>
+            <div className="flex items-center min-h-[32px] text-xs font-medium text-slate-400">Escrow &amp; Withdrawal Hold</div>
             <div className="text-xl font-bold font-mono-tabular text-white">
               ${formatUsd(user.locked_balance)}
             </div>
@@ -1032,7 +1031,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </div>
 
           <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
-            <div className="text-xs font-medium text-slate-400">Spot Coin Holdings</div>
+            <div className="flex items-center min-h-[32px] text-xs font-medium text-slate-400">Spot Coin Holdings</div>
             <div className="text-xl font-bold font-mono-tabular text-white">
               ${formatUsd(portfolioValue + escrowedLimitSellValue)}
             </div>
