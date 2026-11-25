@@ -4433,7 +4433,7 @@ async function startServer() {
 
     const userId = req.auth!.userId;
     try {
-      const ticket = await db.transaction(async () => {
+      const createdTickets = await db.transaction(async () => {
         const round = (await db.prepare('SELECT * FROM presale_rounds WHERE id = ?').get(round_id)) as any;
         if (!round || round.status !== 'OPEN') {
           throw new Error('Presale round is not open');
@@ -4443,8 +4443,8 @@ async function startServer() {
         }
 
         const lotSize = Math.max(1, Number(round.tokens_per_lot || round.lot_size || 1));
-        const totalShares = lots * lotSize;
-        const principalPaid = Number((totalShares * round.lot_price).toFixed(2));
+        const oneLotPrincipal = Number((lotSize * round.lot_price).toFixed(2));
+        const principalPaid = Number((oneLotPrincipal * lots).toFixed(2));
         const settings = await getPlatformSettings();
         const rawFee =
           round.network_fee !== null && round.network_fee !== undefined
@@ -4463,7 +4463,6 @@ async function startServer() {
         await db.prepare('UPDATE users SET main_balance = ? WHERE id = ?').run(nextMain, userId);
         await db.prepare('UPDATE presale_rounds SET sold_lots = sold_lots + ? WHERE id = ?').run(lots, round.id);
 
-        const ticketId = generateId('TKT');
         const now = new Date().toISOString();
 
         // Generate unique 6-digit lottery numbers (1 per lot) for this round
@@ -4476,6 +4475,13 @@ async function startServer() {
             usedNumbers.add(num);
           }
         }
+
+        const insertTicketStmt = db.prepare(`
+          INSERT INTO presale_tickets (id, round_id, user_id, lots_count, ticket_numbers, principal_paid, fee_paid, result, payout_amount, created_at)
+          VALUES (?, ?, ?, 1, ?, ?, ?, 'PENDING', 0, ?)
+        `);
+
+        const createdList: any[] = [];
         const lotNumbers: string[] = [];
         for (let i = 0; i < lots; i++) {
           let candidate = '';
@@ -4491,12 +4497,31 @@ async function startServer() {
           }
           usedNumbers.add(candidate);
           lotNumbers.push(candidate);
-        }
 
-        await db.prepare(`
-          INSERT INTO presale_tickets (id, round_id, user_id, lots_count, ticket_numbers, principal_paid, fee_paid, result, payout_amount, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', 0, ?)
-        `).run(ticketId, round.id, userId, lots, JSON.stringify(lotNumbers), principalPaid, feePaid, now);
+          const ticketId = generateId('TKT');
+          const singleNums = [candidate];
+          await insertTicketStmt.run(
+            ticketId,
+            round.id,
+            userId,
+            JSON.stringify(singleNums),
+            oneLotPrincipal,
+            feePerLot,
+            now
+          );
+          createdList.push({
+            id: ticketId,
+            round_id: round.id,
+            user_id: userId,
+            lots_count: 1,
+            ticket_numbers: singleNums,
+            principal_paid: oneLotPrincipal,
+            fee_paid: feePerLot,
+            result: 'PENDING',
+            payout_amount: 0,
+            created_at: now,
+          });
+        }
 
         await appendLedger(
           userId,
@@ -4504,15 +4529,14 @@ async function startServer() {
           'PRESALE_BUY',
           -totalCost,
           nextMain,
-          ticketId,
-          `Purchased ${lots} lot(s) of ${round.token_symbol} ($${principalPaid.toFixed(2)} + $${feePaid.toFixed(2)} fee) [${lotNumbers.join(', ')}]`
+          createdList[0].id,
+          `Purchased ${lots} lot(s) of ${round.token_symbol} (${createdList.length} tickets, $${principalPaid.toFixed(2)} + $${feePaid.toFixed(2)} fee) [${lotNumbers.join(', ')}]`
         );
 
-        const created = (await db.prepare('SELECT * FROM presale_tickets WHERE id = ?').get(ticketId)) as any;
-        return { ...created, ticket_numbers: lotNumbers };
+        return createdList;
       })();
 
-      res.status(201).json({ ticket });
+      res.status(201).json({ ticket: createdTickets[0], tickets: createdTickets });
     } catch (err: any) {
       res.status(400).json({ error: err.message || 'Presale purchase failed' });
     }

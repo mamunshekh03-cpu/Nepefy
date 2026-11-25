@@ -1271,6 +1271,44 @@ export async function initDatabase(): Promise<void> {
     }
   }
 
+  // Split any legacy PENDING multi-lot presale_tickets into 1 ticket row per lot (each with its own 6-digit number)
+  const multiLotPending = (await db
+    .prepare("SELECT * FROM presale_tickets WHERE result = 'PENDING' AND lots_count > 1")
+    .all()) as any[];
+  if (multiLotPending.length > 0) {
+    for (const t of multiLotPending) {
+      const count = Math.max(1, Number(t.lots_count || 1));
+      let nums: string[] = [];
+      try {
+        const parsed = JSON.parse(t.ticket_numbers || '[]');
+        if (Array.isArray(parsed)) nums = parsed.map(String);
+      } catch {
+        nums = [];
+      }
+      while (nums.length < count) {
+        nums.push(String(Math.floor(100000 + Math.random() * 900000)));
+      }
+      const perPrincipal = Number((Number(t.principal_paid || 0) / count).toFixed(2));
+      const perFee = Number((Number(t.fee_paid || 0) / count).toFixed(2));
+
+      // Keep original ticket ID for the first lot
+      await db
+        .prepare('UPDATE presale_tickets SET lots_count = 1, ticket_numbers = ?, principal_paid = ?, fee_paid = ? WHERE id = ?')
+        .run(JSON.stringify([nums[0]]), perPrincipal, perFee, t.id);
+
+      // Create separate TKT- rows for remaining lots
+      for (let i = 1; i < count; i++) {
+        const newId = 'TKT-' + Math.random().toString(36).substring(2, 10).toUpperCase() + Date.now().toString(36).slice(-4).toUpperCase();
+        await db
+          .prepare(`
+            INSERT INTO presale_tickets (id, round_id, user_id, lots_count, ticket_numbers, principal_paid, fee_paid, result, payout_amount, created_at)
+            VALUES (?, ?, ?, 1, ?, ?, ?, 'PENDING', 0, ?)
+          `)
+          .run(newId, t.round_id, t.user_id, JSON.stringify([nums[i]]), perPrincipal, perFee, t.created_at);
+      }
+    }
+  }
+
   // Backfill legacy presale_rounds rows where default lot_size/issue_price don't match lot_price
   await db.exec(`
     UPDATE presale_rounds

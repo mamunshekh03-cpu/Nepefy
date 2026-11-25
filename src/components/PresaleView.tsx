@@ -49,6 +49,7 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
     totalShares?: number;
     totalCost?: number;
     ticketNumbers?: string[];
+    createdTickets?: { id: string; number: string }[];
   } | null>(null);
   const [ipoTab, setIpoTab] = useState<'ACTIVE' | 'UPCOMING' | 'PREVIOUS'>('ACTIVE');
   const [ticketFilter, setTicketFilter] = useState<'ALL' | 'PENDING' | 'WIN' | 'LOSS'>('ALL');
@@ -147,20 +148,27 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
     }
 
     try {
-      const res = await apiFetch<{ ticket: PresaleTicket }>('/api/presale/buy', {
+      const res = await apiFetch<{ ticket: PresaleTicket; tickets?: PresaleTicket[] }>('/api/presale/buy', {
         method: 'POST',
         body: JSON.stringify({ round_id: round.id, lots_count: lots }),
       });
+      const list = res.tickets && res.tickets.length > 0 ? res.tickets : res.ticket ? [res.ticket] : [];
+      const createdTickets = list.map((t) => ({
+        id: t.id,
+        number: t.ticket_numbers?.[0] || '',
+      }));
+      const allNums = list.flatMap((t) => t.ticket_numbers || []);
       setPopup({
         type: 'ok',
         title: 'IPO Subscription Confirmed',
-        message: `Subscribed ${lots} lot(s) (${totalShares} shares) of ${round.token_symbol}. $${formatUsd(principal)} lot price + $${formatUsd(networkFee)} network fee deducted.`,
+        message: `Subscribed ${lots} lot(s) (${totalShares} shares) of ${round.token_symbol} across ${list.length} individual ticket(s). $${formatUsd(principal)} lot price + $${formatUsd(networkFee)} network fee deducted.`,
         ticketId: res.ticket?.id,
         tokenSymbol: round.token_symbol,
         lots,
         totalShares,
         totalCost,
-        ticketNumbers: res.ticket?.ticket_numbers || [],
+        ticketNumbers: allNums,
+        createdTickets,
       });
       await Promise.all([loadPresale(false), onRefresh()]);
     } catch (err: any) {
@@ -302,24 +310,40 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
             <div className="p-5 space-y-4">
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{popup.message}</p>
 
-              {popup.type === 'ok' && popup.ticketNumbers && popup.ticketNumbers.length > 0 && (
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2">
+              {popup.type === 'ok' && ((popup.createdTickets && popup.createdTickets.length > 0) || (popup.ticketNumbers && popup.ticketNumbers.length > 0)) && (
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2.5">
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                    <span>Your 6-Digit Lottery Numbers</span>
-                    {popup.ticketId && <span className="font-mono-tabular text-slate-700">{popup.ticketId}</span>}
+                    <span>Generated Tickets &amp; 6-Digit Numbers</span>
+                    <span className="font-mono-tabular text-slate-700">{(popup.createdTickets || popup.ticketNumbers || []).length} Ticket(s)</span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {popup.ticketNumbers.map((num) => (
-                      <span
-                        key={num}
-                        className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-mono-tabular text-xs font-bold tracking-wider shadow-xs"
-                      >
-                        #{num}
-                      </span>
-                    ))}
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                    {popup.createdTickets && popup.createdTickets.length > 0 ? (
+                      popup.createdTickets.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs"
+                        >
+                          <span className="font-mono-tabular font-semibold text-slate-700">{item.id}</span>
+                          <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-mono-tabular font-bold tracking-wider">
+                            #{item.number}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {popup.ticketNumbers?.map((num) => (
+                          <span
+                            key={num}
+                            className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-mono-tabular text-xs font-bold tracking-wider shadow-xs"
+                          >
+                            #{num}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <p className="text-[11px] text-slate-500">
-                    Each lot gets 1 unique 6-digit number. Admin declares the winning 6-digit number at draw time.
+                    Each lot has its own unique Ticket ID and 6-digit lottery number. Admin declares the winning 6-digit number at draw time.
                   </p>
                 </div>
               )}
