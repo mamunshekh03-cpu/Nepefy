@@ -19,6 +19,16 @@ import type {
   WithdrawRequest,
 } from '../../types';
 
+export interface AdminDashboardData {
+  metrics: AdminMetrics;
+  registeredAccounts: number;
+  activeP2pOffersCount: number;
+  projectSummary: AdminProjectSummary;
+  platformSettings?: PlatformSettings;
+  supportUnreadCount?: number;
+  recentTransactions: LedgerEntry[];
+}
+
 export interface AdminOverviewData {
   users: UserProfile[];
   deposits: DepositRequest[];

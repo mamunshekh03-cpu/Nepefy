@@ -5156,155 +5156,7 @@ async function startServer() {
   // 8. MASTER ADMIN CONSOLE ROUTES
   // ---------------------------------------------------------------------------
 
-  app.get('/api/admin/overview', requireAdmin, ah(async (_req, res) => {
-    await syncStakingDailyProfits();
-    const users = await db
-      .prepare('SELECT id, uid, email, full_name, role, status, kyc_status, main_balance, claimable_balance, locked_balance, profit_balance, referral_code, referred_by, first_deposit_rewarded, created_at FROM users ORDER BY created_at DESC')
-      .all();
-
-    const deposits = await db
-      .prepare(`
-        SELECT d.*, u.full_name as user_name, u.email as user_email
-        FROM deposit_requests d
-        JOIN users u ON d.user_id = u.id
-        ORDER BY CASE WHEN d.status = 'PENDING' THEN 0 ELSE 1 END, d.created_at DESC
-      `)
-      .all();
-
-    const withdrawals = await db
-      .prepare(`
-        SELECT w.*, u.full_name as user_name, u.email as user_email
-        FROM withdraw_requests w
-        JOIN users u ON w.user_id = u.id
-        ORDER BY CASE WHEN w.status = 'PENDING' THEN 0 ELSE 1 END, w.created_at DESC
-      `)
-      .all();
-
-    const p2pOffers = await db
-      .prepare(`
-        SELECT o.*, u.full_name as creator_name, u.email as creator_email
-        FROM p2p_offers o
-        JOIN users u ON o.creator_id = u.id
-        ORDER BY CASE WHEN o.status = 'ACTIVE' THEN 0 ELSE 1 END, o.created_at DESC
-      `)
-      .all();
-
-    const p2pOrders = await db
-      .prepare(`
-        SELECT ord.*, b.full_name as buyer_name, b.email as buyer_email, s.full_name as seller_name, s.email as seller_email
-        FROM p2p_orders ord
-        JOIN users b ON ord.buyer_id = b.id
-        JOIN users s ON ord.seller_id = s.id
-        ORDER BY CASE WHEN ord.status = 'DISPUTED' THEN 0 ELSE 1 END, ord.created_at DESC
-      `)
-      .all();
-
-    const trades = await db
-      .prepare(`
-        SELECT t.*, u.full_name as user_name, u.email as user_email
-        FROM spot_trades t
-        JOIN users u ON t.user_id = u.id
-        ORDER BY CASE WHEN t.status = 'OPEN' THEN 0 ELSE 1 END, t.created_at DESC
-        LIMIT 250
-      `)
-      .all();
-
-    const rawStaking = (await db
-      .prepare(`
-        SELECT s.*, u.full_name as user_name, u.email as user_email
-        FROM staking_positions s
-        JOIN users u ON s.user_id = u.id
-        ORDER BY s.created_at DESC
-      `)
-      .all()) as any[];
-    const platformSettings = await getPlatformSettings();
-    const staking = rawStaking.map((s) => ({
-      ...enrichStakingPosition(s, platformSettings.stakingEmergencyPenaltyRate),
-      user_name: s.user_name,
-      user_email: s.user_email,
-    }));
-
-    const presaleRounds = await db.prepare('SELECT * FROM presale_rounds ORDER BY created_at DESC').all();
-    const rawPresaleTickets = (await db
-      .prepare(`
-        SELECT t.*, r.token_symbol, r.tokens_per_lot, r.projected_win_payout, r.winning_number, u.full_name as user_name, u.email as user_email
-        FROM presale_tickets t
-        JOIN presale_rounds r ON t.round_id = r.id
-        JOIN users u ON t.user_id = u.id
-        ORDER BY CASE WHEN t.result = 'PENDING' THEN 0 ELSE 1 END, t.created_at DESC
-      `)
-      .all()) as any[];
-    const presaleTickets = rawPresaleTickets.map((t) => ({
-      ...t,
-      ticket_numbers: parseTicketNumbers(t.ticket_numbers),
-    }));
-
-    const rawLuckyDraws = (await db
-      .prepare(`
-        SELECT d.*,
-          COALESCE((SELECT SUM(t.ticket_count) FROM jackpot_tickets t WHERE t.draw_id = d.id), 0) as tickets_sold,
-          COALESCE((SELECT SUM(t.cost_usd) FROM jackpot_tickets t WHERE t.draw_id = d.id), 0) as ticket_revenue_usd,
-          COALESCE((SELECT COUNT(DISTINCT t.user_id) FROM jackpot_tickets t WHERE t.draw_id = d.id), 0) as unique_participants
-        FROM lucky_draws d
-        ORDER BY d.created_at DESC
-      `)
-      .all()) as any[];
-
-    const luckyDraws = rawLuckyDraws.map((d) => ({
-      ...d,
-      draw_hash:
-        d.draw_hash ||
-        (d.status === 'COMPLETED'
-          ? computeDrawProofHash({
-              drawId: d.id,
-              winnerId: d.winner_user_id,
-              winningTicketNumber: d.winning_ticket_number,
-              prizePool: Number(d.prize_pool || 0),
-              drawAt: d.draw_at,
-              poolSize: Number(d.tickets_sold || 0),
-            })
-          : null),
-    }));
-
-    const rawJackpotTickets = (await db
-      .prepare(`
-        SELECT t.*, d.quarter_label, u.full_name as user_name, u.email as user_email
-        FROM jackpot_tickets t
-        JOIN lucky_draws d ON t.draw_id = d.id
-        JOIN users u ON t.user_id = u.id
-        ORDER BY CASE WHEN t.status = 'ACTIVE' THEN 0 ELSE 1 END, t.created_at DESC
-      `)
-      .all()) as any[];
-
-    const jackpotTickets = rawJackpotTickets.map((t) => ({
-      ...t,
-      ticket_numbers: parseTicketNumbers(t.ticket_numbers),
-    }));
-
-    const referrals = await db
-      .prepare(`
-        SELECT r.*,
-               ref.full_name as referrer_name,
-               ref.email as referrer_email,
-               u.full_name as referred_name,
-               u.email as referred_email
-        FROM referrals r
-        JOIN users ref ON r.referrer_id = ref.id
-        JOIN users u ON r.referred_user_id = u.id
-        ORDER BY CASE WHEN r.status = 'PENDING_DEPOSIT' THEN 0 ELSE 1 END, r.created_at DESC
-      `)
-      .all();
-
-    const transactions = await db
-      .prepare(`
-        SELECT l.*, u.full_name as user_name, u.email as user_email
-        FROM wallets_ledger l
-        JOIN users u ON l.user_id = u.id
-        ORDER BY l.created_at DESC
-        LIMIT 300
-      `)
-      .all();
-
+async function buildAdminProjectSummary(): Promise<any> {
     const spotAgg = (await db
       .prepare(`
         SELECT
@@ -5588,6 +5440,283 @@ async function startServer() {
         netProjectPnlUsd,
       },
     };
+
+  return projectSummary;
+}
+
+  // Fast first-paint payload for the Executive Dashboard. The full ledger overview is still
+  // available via /api/admin/overview, but it pulls every user/trade/ledger row and is loaded
+  // by the admin console only after the dashboard has rendered.
+  async function buildAdminDashboardMetrics() {
+    const [users, deposits, withdrawals, p2pOffers, p2pOrders, trades, staking, presaleTickets, referrals] =
+      await Promise.all([
+        db
+          .prepare('SELECT status, kyc_status, main_balance, claimable_balance, locked_balance FROM users')
+          .all() as Promise<any[]>,
+        db
+          .prepare(`
+            SELECT d.amount, d.status FROM deposit_requests d
+            JOIN users u ON d.user_id = u.id
+          `)
+          .all() as Promise<any[]>,
+        db
+          .prepare(`
+            SELECT w.amount, w.status FROM withdraw_requests w
+            JOIN users u ON w.user_id = u.id
+          `)
+          .all() as Promise<any[]>,
+        db.prepare("SELECT id FROM p2p_offers WHERE status = 'ACTIVE'").all() as Promise<any[]>,
+        db.prepare('SELECT status FROM p2p_orders').all() as Promise<any[]>,
+        db
+          .prepare(`
+            SELECT t.status, t.amount_usd FROM spot_trades t
+            JOIN users u ON t.user_id = u.id
+          `)
+          .all() as Promise<any[]>,
+        db
+          .prepare(`
+            SELECT s.status, s.principal_amount, s.total_profit_paid FROM staking_positions s
+            JOIN users u ON s.user_id = u.id
+          `)
+          .all() as Promise<any[]>,
+        db
+          .prepare(`
+            SELECT t.result FROM presale_tickets t
+            JOIN presale_rounds r ON t.round_id = r.id
+            JOIN users u ON t.user_id = u.id
+          `)
+          .all() as Promise<any[]>,
+        db
+          .prepare(`
+            SELECT r.status FROM referrals r
+            JOIN users ref ON r.referrer_id = ref.id
+            JOIN users u ON r.referred_user_id = u.id
+          `)
+          .all() as Promise<any[]>,
+      ]);
+
+    const totalMain = users.reduce((sum, u) => sum + Number(u.main_balance || 0), 0);
+    const totalClaimable = users.reduce((sum, u) => sum + Number(u.claimable_balance || 0), 0);
+    const totalLocked = users.reduce((sum, u) => sum + Number(u.locked_balance || 0), 0);
+    const pendingDeposits = deposits.filter((d) => d.status === 'PENDING');
+    const pendingWithdrawals = withdrawals.filter((w) => w.status === 'PENDING');
+    const openTrades = trades.filter((t) => t.status === 'OPEN');
+    const activeStaking = staking.filter((s) => s.status === 'ACTIVE');
+    const pendingPresaleTickets = presaleTickets.filter((t) => t.result === 'PENDING').length;
+    const pendingReferrals = referrals.filter((r) => r.status === 'PENDING_DEPOSIT').length;
+
+    return {
+      metrics: {
+        totalMain,
+        totalClaimable,
+        totalLocked,
+        totalLiquidity: totalMain + totalClaimable + totalLocked,
+        activeUsers: users.filter((u) => (u.status || 'ACTIVE') === 'ACTIVE').length,
+        inactiveUsers: users.filter((u) => u.status === 'INACTIVE').length,
+        verifiedUsers: users.filter((u) => (u.kyc_status || 'UNVERIFIED') === 'VERIFIED').length,
+        unverifiedUsers: users.filter((u) => (u.kyc_status || 'UNVERIFIED') === 'UNVERIFIED').length,
+        pendingDepositsCount: pendingDeposits.length,
+        pendingDepositsAmt: pendingDeposits.reduce((sum, d) => sum + Number(d.amount || 0), 0),
+        approvedDepositsTotal: deposits
+          .filter((d) => d.status === 'APPROVED')
+          .reduce((sum, d) => sum + Number(d.amount || 0), 0),
+        pendingWithdrawalsCount: pendingWithdrawals.length,
+        pendingWithdrawalsAmt: pendingWithdrawals.reduce((sum, w) => sum + Number(w.amount || 0), 0),
+        approvedWithdrawalsTotal: withdrawals
+          .filter((w) => w.status === 'APPROVED')
+          .reduce((sum, w) => sum + Number(w.amount || 0), 0),
+        disputedP2p: p2pOrders.filter((o) => o.status === 'DISPUTED').length,
+        openTradesCount: openTrades.length,
+        openTradesVolume: openTrades.reduce((sum, t) => sum + Number(t.amount_usd || 0), 0),
+        activeStakingCount: activeStaking.length,
+        totalStakedPrincipal: activeStaking.reduce((sum, s) => sum + Number(s.principal_amount || 0), 0),
+        totalStakingProfitPaid: staking.reduce((sum, s) => sum + Number(s.total_profit_paid || 0), 0),
+        pendingPresaleTickets,
+        pendingReferrals,
+        totalPendingQueue:
+          pendingDeposits.length + pendingWithdrawals.length + p2pOrders.filter((o) => o.status === 'DISPUTED').length +
+          pendingPresaleTickets + pendingReferrals,
+      },
+      registeredAccounts: users.length,
+      activeP2pOffersCount: p2pOffers.length,
+    };
+  }
+
+  app.get('/api/admin/dashboard', requireAdmin, ah(async (_req, res) => {
+    const [dashboardMetrics, projectSummary, platformSettings, supportUnreadRow, recentTransactions] = await Promise.all([
+      buildAdminDashboardMetrics(),
+      buildAdminProjectSummary(),
+      getPlatformSettings(),
+      db.prepare('SELECT COALESCE(SUM(admin_unread), 0) as cnt FROM support_threads').get() as Promise<{ cnt?: number }>,
+      db
+        .prepare(`
+          SELECT l.*, u.full_name as user_name, u.email as user_email
+          FROM wallets_ledger l
+          JOIN users u ON l.user_id = u.id
+          ORDER BY l.created_at DESC
+          LIMIT 8
+        `)
+        .all() as Promise<any[]>,
+    ]);
+
+    res.json({
+      ...dashboardMetrics,
+      projectSummary,
+      platformSettings,
+      supportUnreadCount: Number(supportUnreadRow?.cnt || 0),
+      recentTransactions,
+    });
+  }));
+
+  app.get('/api/admin/overview', requireAdmin, ah(async (_req, res) => {
+    const users = await db
+      .prepare('SELECT id, uid, email, full_name, role, status, kyc_status, main_balance, claimable_balance, locked_balance, profit_balance, referral_code, referred_by, first_deposit_rewarded, created_at FROM users ORDER BY created_at DESC')
+      .all();
+
+    const deposits = await db
+      .prepare(`
+        SELECT d.*, u.full_name as user_name, u.email as user_email
+        FROM deposit_requests d
+        JOIN users u ON d.user_id = u.id
+        ORDER BY CASE WHEN d.status = 'PENDING' THEN 0 ELSE 1 END, d.created_at DESC
+      `)
+      .all();
+
+    const withdrawals = await db
+      .prepare(`
+        SELECT w.*, u.full_name as user_name, u.email as user_email
+        FROM withdraw_requests w
+        JOIN users u ON w.user_id = u.id
+        ORDER BY CASE WHEN w.status = 'PENDING' THEN 0 ELSE 1 END, w.created_at DESC
+      `)
+      .all();
+
+    const p2pOffers = await db
+      .prepare(`
+        SELECT o.*, u.full_name as creator_name, u.email as creator_email
+        FROM p2p_offers o
+        JOIN users u ON o.creator_id = u.id
+        ORDER BY CASE WHEN o.status = 'ACTIVE' THEN 0 ELSE 1 END, o.created_at DESC
+      `)
+      .all();
+
+    const p2pOrders = await db
+      .prepare(`
+        SELECT ord.*, b.full_name as buyer_name, b.email as buyer_email, s.full_name as seller_name, s.email as seller_email
+        FROM p2p_orders ord
+        JOIN users b ON ord.buyer_id = b.id
+        JOIN users s ON ord.seller_id = s.id
+        ORDER BY CASE WHEN ord.status = 'DISPUTED' THEN 0 ELSE 1 END, ord.created_at DESC
+      `)
+      .all();
+
+    const trades = await db
+      .prepare(`
+        SELECT t.*, u.full_name as user_name, u.email as user_email
+        FROM spot_trades t
+        JOIN users u ON t.user_id = u.id
+        ORDER BY CASE WHEN t.status = 'OPEN' THEN 0 ELSE 1 END, t.created_at DESC
+        LIMIT 250
+      `)
+      .all();
+
+    const rawStaking = (await db
+      .prepare(`
+        SELECT s.*, u.full_name as user_name, u.email as user_email
+        FROM staking_positions s
+        JOIN users u ON s.user_id = u.id
+        ORDER BY s.created_at DESC
+      `)
+      .all()) as any[];
+    const platformSettings = await getPlatformSettings();
+    const staking = rawStaking.map((s) => ({
+      ...enrichStakingPosition(s, platformSettings.stakingEmergencyPenaltyRate),
+      user_name: s.user_name,
+      user_email: s.user_email,
+    }));
+
+    const presaleRounds = await db.prepare('SELECT * FROM presale_rounds ORDER BY created_at DESC').all();
+    const rawPresaleTickets = (await db
+      .prepare(`
+        SELECT t.*, r.token_symbol, r.tokens_per_lot, r.projected_win_payout, r.winning_number, u.full_name as user_name, u.email as user_email
+        FROM presale_tickets t
+        JOIN presale_rounds r ON t.round_id = r.id
+        JOIN users u ON t.user_id = u.id
+        ORDER BY CASE WHEN t.result = 'PENDING' THEN 0 ELSE 1 END, t.created_at DESC
+      `)
+      .all()) as any[];
+    const presaleTickets = rawPresaleTickets.map((t) => ({
+      ...t,
+      ticket_numbers: parseTicketNumbers(t.ticket_numbers),
+    }));
+
+    const rawLuckyDraws = (await db
+      .prepare(`
+        SELECT d.*,
+          COALESCE((SELECT SUM(t.ticket_count) FROM jackpot_tickets t WHERE t.draw_id = d.id), 0) as tickets_sold,
+          COALESCE((SELECT SUM(t.cost_usd) FROM jackpot_tickets t WHERE t.draw_id = d.id), 0) as ticket_revenue_usd,
+          COALESCE((SELECT COUNT(DISTINCT t.user_id) FROM jackpot_tickets t WHERE t.draw_id = d.id), 0) as unique_participants
+        FROM lucky_draws d
+        ORDER BY d.created_at DESC
+      `)
+      .all()) as any[];
+
+    const luckyDraws = rawLuckyDraws.map((d) => ({
+      ...d,
+      draw_hash:
+        d.draw_hash ||
+        (d.status === 'COMPLETED'
+          ? computeDrawProofHash({
+              drawId: d.id,
+              winnerId: d.winner_user_id,
+              winningTicketNumber: d.winning_ticket_number,
+              prizePool: Number(d.prize_pool || 0),
+              drawAt: d.draw_at,
+              poolSize: Number(d.tickets_sold || 0),
+            })
+          : null),
+    }));
+
+    const rawJackpotTickets = (await db
+      .prepare(`
+        SELECT t.*, d.quarter_label, u.full_name as user_name, u.email as user_email
+        FROM jackpot_tickets t
+        JOIN lucky_draws d ON t.draw_id = d.id
+        JOIN users u ON t.user_id = u.id
+        ORDER BY CASE WHEN t.status = 'ACTIVE' THEN 0 ELSE 1 END, t.created_at DESC
+      `)
+      .all()) as any[];
+
+    const jackpotTickets = rawJackpotTickets.map((t) => ({
+      ...t,
+      ticket_numbers: parseTicketNumbers(t.ticket_numbers),
+    }));
+
+    const referrals = await db
+      .prepare(`
+        SELECT r.*,
+               ref.full_name as referrer_name,
+               ref.email as referrer_email,
+               u.full_name as referred_name,
+               u.email as referred_email
+        FROM referrals r
+        JOIN users ref ON r.referrer_id = ref.id
+        JOIN users u ON r.referred_user_id = u.id
+        ORDER BY CASE WHEN r.status = 'PENDING_DEPOSIT' THEN 0 ELSE 1 END, r.created_at DESC
+      `)
+      .all();
+
+    const transactions = await db
+      .prepare(`
+        SELECT l.*, u.full_name as user_name, u.email as user_email
+        FROM wallets_ledger l
+        JOIN users u ON l.user_id = u.id
+        ORDER BY l.created_at DESC
+        LIMIT 300
+      `)
+      .all();
+
+    const projectSummary = await buildAdminProjectSummary();
 
     const supportUnreadRow = (await db
       .prepare('SELECT COALESCE(SUM(admin_unread), 0) as cnt FROM support_threads')

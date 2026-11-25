@@ -1,11 +1,15 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { formatDateTime, formatUsd } from '../../lib/api';
-import type { MarketPair } from '../../types';
-import type { AdminMetrics, AdminOverviewData, AdminTab, SpotStats, UserFilter } from './adminTypes';
+import type { AdminProjectSummary, LedgerEntry, MarketPair, PlatformSettings } from '../../types';
+import type { AdminMetrics, AdminTab, SpotStats, UserFilter } from './adminTypes';
 
 interface AdminDashboardTabProps {
-  data: AdminOverviewData;
+  projectSummary: AdminProjectSummary;
+  platformSettings?: PlatformSettings;
+  registeredAccounts: number;
+  activeP2pOffersCount: number;
+  recentTransactions: LedgerEntry[];
   metrics: AdminMetrics;
   spotStats: SpotStats;
   displayMarkets: MarketPair[];
@@ -15,7 +19,11 @@ interface AdminDashboardTabProps {
 }
 
 export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
-  data,
+  projectSummary,
+  platformSettings,
+  registeredAccounts,
+  activeP2pOffersCount,
+  recentTransactions,
   metrics,
   spotStats,
   displayMarkets,
@@ -146,7 +154,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
 
         <div className="p-4.5">
           <div className="text-xs text-slate-500">Registered Accounts</div>
-          <div className="mt-1 text-xl font-bold font-mono-tabular text-slate-900">{data.users.length}</div>
+          <div className="mt-1 text-xl font-bold font-mono-tabular text-slate-900">{registeredAccounts}</div>
           <div className="mt-1.5 text-[11px] text-slate-500 font-mono-tabular">
             {metrics.activeUsers} active · {metrics.verifiedUsers} KYC · {metrics.unverifiedUsers} pending
           </div>
@@ -154,7 +162,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
       </div>
 
       {/* All-Project Profit / Loss & Settlement Summary */}
-      {data.projectSummary && (
+      {projectSummary && (
         <div className="space-y-5">
           <div className="border border-slate-200 rounded-xl bg-white overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/50 flex flex-wrap items-center justify-between gap-2">
@@ -177,36 +185,36 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                 <div className="text-xs text-slate-500">Net Project Profit / Loss</div>
                 <div
                   className={`mt-1 text-xl font-bold font-mono-tabular ${
-                    data.projectSummary.totals.netProjectPnlUsd >= 0 ? 'text-emerald-600' : 'text-red-600'
+                    projectSummary.totals.netProjectPnlUsd >= 0 ? 'text-emerald-600' : 'text-red-600'
                   }`}
                 >
-                  {data.projectSummary.totals.netProjectPnlUsd >= 0 ? '+' : '-'}$
-                  {formatUsd(Math.abs(data.projectSummary.totals.netProjectPnlUsd))}
+                  {projectSummary.totals.netProjectPnlUsd >= 0 ? '+' : '-'}$
+                  {formatUsd(Math.abs(projectSummary.totals.netProjectPnlUsd))}
                 </div>
                 <div className="mt-1.5 text-[11px] text-slate-500 font-mono-tabular">
-                  Rev ${formatUsd(data.projectSummary.totals.grossRevenueUsd)} · Exp $
-                  {formatUsd(data.projectSummary.totals.grossExpensesUsd)}
+                  Rev ${formatUsd(projectSummary.totals.grossRevenueUsd)} · Exp $
+                  {formatUsd(projectSummary.totals.grossExpensesUsd)}
                 </div>
               </div>
 
               <div className="p-4.5">
                 <div className="text-xs text-slate-500">Spot Taker &amp; Maker Fees</div>
                 <div className="mt-1 text-xl font-bold font-mono-tabular text-emerald-600">
-                  +${formatUsd(data.projectSummary.spot.totalFeeUsd)}
+                  +${formatUsd(projectSummary.spot.totalFeeUsd)}
                 </div>
                 <div className="mt-1.5 text-[11px] text-slate-500 font-mono-tabular">
-                  Taker ${formatUsd(data.projectSummary.spot.takerFeeUsd)} ({data.projectSummary.spot.takerOrdersCount}) · Maker $
-                  {formatUsd(data.projectSummary.spot.makerFeeUsd)} ({data.projectSummary.spot.makerOrdersCount})
+                  Taker ${formatUsd(projectSummary.spot.takerFeeUsd)} ({projectSummary.spot.takerOrdersCount}) · Maker $
+                  {formatUsd(projectSummary.spot.makerFeeUsd)} ({projectSummary.spot.makerOrdersCount})
                 </div>
               </div>
 
               <div className="p-4.5">
                 <div className="text-xs text-slate-500">Spot Liquidation Revenue</div>
                 <div className="mt-1 text-xl font-bold font-mono-tabular text-emerald-600">
-                  +${formatUsd(data.projectSummary.spot.liquidationUsd)}
+                  +${formatUsd(projectSummary.spot.liquidationUsd)}
                 </div>
                 <div className="mt-1.5 text-[11px] text-slate-500 font-mono-tabular">
-                  {data.projectSummary.spot.liquidationCount} liquidated position(s) forfeited
+                  {projectSummary.spot.liquidationCount} liquidated position(s) forfeited
                 </div>
               </div>
 
@@ -214,15 +222,15 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                 <div className="text-xs text-slate-500">Net Treasury Cashflow</div>
                 <div
                   className={`mt-1 text-xl font-bold font-mono-tabular ${
-                    data.projectSummary.settlements.netCashflowUsd >= 0 ? 'text-slate-900' : 'text-red-600'
+                    projectSummary.settlements.netCashflowUsd >= 0 ? 'text-slate-900' : 'text-red-600'
                   }`}
                 >
-                  {data.projectSummary.settlements.netCashflowUsd >= 0 ? '+' : '-'}$
-                  {formatUsd(Math.abs(data.projectSummary.settlements.netCashflowUsd))}
+                  {projectSummary.settlements.netCashflowUsd >= 0 ? '+' : '-'}$
+                  {formatUsd(Math.abs(projectSummary.settlements.netCashflowUsd))}
                 </div>
                 <div className="mt-1.5 text-[11px] text-slate-500 font-mono-tabular">
-                  In ${formatUsd(data.projectSummary.settlements.depositsApprovedUsd)} · Out $
-                  {formatUsd(data.projectSummary.settlements.withdrawalsApprovedUsd)}
+                  In ${formatUsd(projectSummary.settlements.depositsApprovedUsd)} · Out $
+                  {formatUsd(projectSummary.settlements.withdrawalsApprovedUsd)}
                 </div>
               </div>
             </div>
@@ -249,8 +257,8 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-xs">
                     {(() => {
-                      const ps = data.projectSummary!;
-                      const cfg = data.platformSettings;
+                      const ps = projectSummary!;
+                      const cfg = platformSettings;
                       const wFee = cfg?.withdrawFeeUsd ?? 1.0;
                       const pFee = cfg?.p2pFeeUsd ?? 0.1;
                       const sFee = cfg?.sendFeeUsd ?? 0.2;
@@ -365,15 +373,15 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                     <tr className="border-t border-slate-200 bg-slate-50/80 text-xs font-semibold">
                       <td className="py-3 px-4 text-slate-900">Total Realized Project Net P&amp;L</td>
                       <td className="py-3 px-4 font-mono-tabular text-slate-500">
-                        Spot Vol ${formatUsd(data.projectSummary.spot.totalVolumeUsd)} · {data.projectSummary.spot.totalOrders} orders
+                        Spot Vol ${formatUsd(projectSummary.spot.totalVolumeUsd)} · {projectSummary.spot.totalOrders} orders
                       </td>
                       <td
                         className={`py-3 px-4 text-right font-mono-tabular whitespace-nowrap ${
-                          data.projectSummary.totals.netProjectPnlUsd >= 0 ? 'text-emerald-600' : 'text-red-600'
+                          projectSummary.totals.netProjectPnlUsd >= 0 ? 'text-emerald-600' : 'text-red-600'
                         }`}
                       >
-                        {data.projectSummary.totals.netProjectPnlUsd >= 0 ? '+' : '-'}$
-                        {formatUsd(Math.abs(data.projectSummary.totals.netProjectPnlUsd))}
+                        {projectSummary.totals.netProjectPnlUsd >= 0 ? '+' : '-'}$
+                        {formatUsd(Math.abs(projectSummary.totals.netProjectPnlUsd))}
                       </td>
                       <td className="py-3 px-4" />
                     </tr>
@@ -394,13 +402,13 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                   <div>
                     <div className="font-semibold text-slate-900">Deposits Settled (Approved)</div>
                     <div className="text-slate-500 font-mono-tabular">
-                      {data.projectSummary.settlements.depositsApprovedCount} approved ·{' '}
-                      {data.projectSummary.settlements.depositsPendingCount} pending ($
-                      {formatUsd(data.projectSummary.settlements.depositsPendingUsd)})
+                      {projectSummary.settlements.depositsApprovedCount} approved ·{' '}
+                      {projectSummary.settlements.depositsPendingCount} pending ($
+                      {formatUsd(projectSummary.settlements.depositsPendingUsd)})
                     </div>
                   </div>
                   <div className="font-mono-tabular font-bold text-emerald-600 shrink-0">
-                    +${formatUsd(data.projectSummary.settlements.depositsApprovedUsd)}
+                    +${formatUsd(projectSummary.settlements.depositsApprovedUsd)}
                   </div>
                 </div>
 
@@ -408,13 +416,13 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                   <div>
                     <div className="font-semibold text-slate-900">Withdrawals Settled (Paid Out)</div>
                     <div className="text-slate-500 font-mono-tabular">
-                      {data.projectSummary.settlements.withdrawalsApprovedCount} completed ·{' '}
-                      {data.projectSummary.settlements.withdrawalsPendingCount} held ($
-                      {formatUsd(data.projectSummary.settlements.withdrawalsPendingUsd)})
+                      {projectSummary.settlements.withdrawalsApprovedCount} completed ·{' '}
+                      {projectSummary.settlements.withdrawalsPendingCount} held ($
+                      {formatUsd(projectSummary.settlements.withdrawalsPendingUsd)})
                     </div>
                   </div>
                   <div className="font-mono-tabular font-bold text-red-600 shrink-0">
-                    -${formatUsd(data.projectSummary.settlements.withdrawalsApprovedUsd)}
+                    -${formatUsd(projectSummary.settlements.withdrawalsApprovedUsd)}
                   </div>
                 </div>
 
@@ -422,12 +430,12 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                   <div>
                     <div className="font-semibold text-slate-900">P2P Escrow Settlements</div>
                     <div className="text-slate-500 font-mono-tabular">
-                      {data.projectSummary.settlements.p2pSettledCount} settled · Active escrow $
-                      {formatUsd(data.projectSummary.settlements.p2pEscrowUsd)}
+                      {projectSummary.settlements.p2pSettledCount} settled · Active escrow $
+                      {formatUsd(projectSummary.settlements.p2pEscrowUsd)}
                     </div>
                   </div>
                   <div className="font-mono-tabular font-bold text-slate-900 shrink-0">
-                    ${formatUsd(data.projectSummary.settlements.p2pSettledUsd)}
+                    ${formatUsd(projectSummary.settlements.p2pSettledUsd)}
                   </div>
                 </div>
 
@@ -435,12 +443,12 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                   <div>
                     <div className="font-semibold text-slate-900">Presale Lot Settlements</div>
                     <div className="text-slate-500 font-mono-tabular">
-                      {data.projectSummary.presale.winCount} WIN (${formatUsd(data.projectSummary.presale.winPayoutsUsd)}) ·{' '}
-                      {data.projectSummary.presale.lossCount} refunded (${formatUsd(data.projectSummary.presale.lossRefundsUsd)})
+                      {projectSummary.presale.winCount} WIN (${formatUsd(projectSummary.presale.winPayoutsUsd)}) ·{' '}
+                      {projectSummary.presale.lossCount} refunded (${formatUsd(projectSummary.presale.lossRefundsUsd)})
                     </div>
                   </div>
                   <div className="font-mono-tabular font-bold text-slate-900 shrink-0">
-                    ${formatUsd(data.projectSummary.presale.winPayoutsUsd + data.projectSummary.presale.lossRefundsUsd)}
+                    ${formatUsd(projectSummary.presale.winPayoutsUsd + projectSummary.presale.lossRefundsUsd)}
                   </div>
                 </div>
 
@@ -448,12 +456,12 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                   <div>
                     <div className="font-semibold text-slate-900">Staking Principal &amp; Yield</div>
                     <div className="text-slate-500 font-mono-tabular">
-                      Active ${formatUsd(data.projectSummary.staking.activePrincipalUsd)} · Returned $
-                      {formatUsd(data.projectSummary.staking.completedPrincipalUsd)}
+                      Active ${formatUsd(projectSummary.staking.activePrincipalUsd)} · Returned $
+                      {formatUsd(projectSummary.staking.completedPrincipalUsd)}
                     </div>
                   </div>
                   <div className="font-mono-tabular font-bold text-slate-900 shrink-0">
-                    ${formatUsd(data.projectSummary.staking.totalCostUsd)} paid
+                    ${formatUsd(projectSummary.staking.totalCostUsd)} paid
                   </div>
                 </div>
 
@@ -461,13 +469,13 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                   <div>
                     <div className="font-semibold text-slate-900">User Wallet Liabilities</div>
                     <div className="text-slate-500 font-mono-tabular">
-                      Main ${formatUsd(data.projectSummary.settlements.userMainLiabilityUsd)} · Claimable $
-                      {formatUsd(data.projectSummary.settlements.userClaimableLiabilityUsd)} · Locked $
-                      {formatUsd(data.projectSummary.settlements.userLockedLiabilityUsd)}
+                      Main ${formatUsd(projectSummary.settlements.userMainLiabilityUsd)} · Claimable $
+                      {formatUsd(projectSummary.settlements.userClaimableLiabilityUsd)} · Locked $
+                      {formatUsd(projectSummary.settlements.userLockedLiabilityUsd)}
                     </div>
                   </div>
                   <div className="font-mono-tabular font-bold text-slate-900 shrink-0">
-                    ${formatUsd(data.projectSummary.settlements.userTotalLiabilityUsd)}
+                    ${formatUsd(projectSummary.settlements.userTotalLiabilityUsd)}
                   </div>
                 </div>
               </div>
@@ -573,7 +581,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
               },
               {
                 title: 'P2P Market & Dispute Arbitration',
-                meta: `${data.p2pOffers.filter((o) => o.status === 'ACTIVE').length} active marketplace offers`,
+                meta: `${activeP2pOffersCount} active marketplace offers`,
                 statusText: metrics.disputedP2p > 0 ? `${metrics.disputedP2p} disputed order(s)` : 'No disputes',
                 urgent: metrics.disputedP2p > 0,
                 target: 'P2P' as AdminTab,
@@ -643,7 +651,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-xs">
-              {data.transactions.slice(0, 8).map((tx) => (
+              {recentTransactions.map((tx) => (
                 <tr key={tx.id} className="hover:bg-slate-50/60">
                   <td className="py-2.5 px-4 font-mono-tabular text-slate-500 whitespace-nowrap">
                     {formatDateTime(tx.created_at)}

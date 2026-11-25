@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowRight, CheckCircle2, RefreshCw, X } from 'lucide-react';
-import { NepefyLogo } from './NepefyLogo';
 import { apiFetch } from '../lib/api';
-import { SupportChatCenter } from './SupportChatCenter';
 import type {
   MarketPair,
   P2PMessage,
@@ -12,6 +10,7 @@ import type {
   UserProfile,
 } from '../types';
 import type {
+  AdminDashboardData,
   AdminMetrics,
   AdminNavBadgeMap,
   AdminOverviewData,
@@ -21,14 +20,23 @@ import type {
   UserFilter,
 } from './admin/adminTypes';
 import { AdminDashboardTab } from './admin/AdminDashboardTab';
-import { AdminUsersTab } from './admin/AdminUsersTab';
-import { AdminDepositsTab, AdminSendTab, AdminWithdrawalsTab } from './admin/AdminTreasuryTabs';
-import { AdminP2PTab, AdminSpotTab } from './admin/AdminTradingTabs';
-import { AdminPresaleTab, AdminStakingTab } from './admin/AdminVaultPresaleTabs';
-import { AdminRewardsTab, AdminTransactionsTab } from './admin/AdminRewardsLedgerTabs';
-import { AdminAuditLogsTab } from './admin/AdminAuditLogsTab';
-import { AdminSettingsTab } from './admin/AdminSettingsTab';
 import { AdminModals } from './admin/AdminModals';
+
+// Only the Executive Dashboard is needed for the first admin paint. Every other module is
+// downloaded on demand so a large ledger does not delay the whole admin panel.
+const SupportChatCenter = lazy(() => import('./SupportChatCenter').then((m) => ({ default: m.SupportChatCenter })));
+const AdminUsersTab = lazy(() => import('./admin/AdminUsersTab').then((m) => ({ default: m.AdminUsersTab })));
+const AdminDepositsTab = lazy(() => import('./admin/AdminTreasuryTabs').then((m) => ({ default: m.AdminDepositsTab })));
+const AdminWithdrawalsTab = lazy(() => import('./admin/AdminTreasuryTabs').then((m) => ({ default: m.AdminWithdrawalsTab })));
+const AdminSendTab = lazy(() => import('./admin/AdminTreasuryTabs').then((m) => ({ default: m.AdminSendTab })));
+const AdminP2PTab = lazy(() => import('./admin/AdminTradingTabs').then((m) => ({ default: m.AdminP2PTab })));
+const AdminSpotTab = lazy(() => import('./admin/AdminTradingTabs').then((m) => ({ default: m.AdminSpotTab })));
+const AdminStakingTab = lazy(() => import('./admin/AdminVaultPresaleTabs').then((m) => ({ default: m.AdminStakingTab })));
+const AdminPresaleTab = lazy(() => import('./admin/AdminVaultPresaleTabs').then((m) => ({ default: m.AdminPresaleTab })));
+const AdminRewardsTab = lazy(() => import('./admin/AdminRewardsLedgerTabs').then((m) => ({ default: m.AdminRewardsTab })));
+const AdminTransactionsTab = lazy(() => import('./admin/AdminRewardsLedgerTabs').then((m) => ({ default: m.AdminTransactionsTab })));
+const AdminAuditLogsTab = lazy(() => import('./admin/AdminAuditLogsTab').then((m) => ({ default: m.AdminAuditLogsTab })));
+const AdminSettingsTab = lazy(() => import('./admin/AdminSettingsTab').then((m) => ({ default: m.AdminSettingsTab })));
 
 interface AdminConsoleViewProps {
   user: UserProfile;
@@ -75,6 +83,7 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
     onTabChange?.(next);
   };
   const [data, setData] = useState<AdminOverviewData | null>(null);
+  const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [notice, setNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -166,6 +175,20 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
   const [txWalletFilter, setTxWalletFilter] = useState<'ALL' | 'MAIN' | 'CLAIMABLE'>('ALL');
   const [txTypeFilter, setTxTypeFilter] = useState('ALL');
 
+  const loadDashboard = async (silent = false) => {
+    if (!silent) setRefreshing(true);
+    try {
+      const res = await apiFetch<AdminDashboardData>('/api/admin/dashboard');
+      setDashboard(res);
+      if (typeof res.supportUnreadCount === 'number') {
+        setLiveSupportUnread(res.supportUnreadCount);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   const loadOverview = async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
@@ -201,7 +224,29 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
   };
 
   useEffect(() => {
-    loadOverview().catch(() => {});
+    let cancelled = false;
+    let idleHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    const loadFullLedger = () => {
+      if (!cancelled) loadOverview(true).catch(() => {});
+    };
+    loadDashboard()
+      .catch(() => {})
+      .finally(() => {
+        if (cancelled) return;
+        const requestIdle = (window as any).requestIdleCallback as
+          | ((cb: () => void, opts?: { timeout: number }) => number)
+          | undefined;
+        if (requestIdle) idleHandle = requestIdle(loadFullLedger, { timeout: 1500 });
+        else timeoutHandle = setTimeout(loadFullLedger, 300);
+      });
+    return () => {
+      cancelled = true;
+      if (idleHandle !== null && (window as any).cancelIdleCallback) {
+        (window as any).cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    };
   }, []);
 
   const runAction = async (fn: () => Promise<string>) => {
@@ -209,7 +254,7 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
     try {
       const msg = await fn();
       setNotice({ type: 'ok', text: msg });
-      await Promise.all([loadOverview(true), onRefreshUser()]);
+      await Promise.all([loadDashboard(true), loadOverview(true), onRefreshUser()]);
     } catch (err: any) {
       setNotice({ type: 'err', text: err.message || 'Admin operation failed' });
     }
@@ -218,7 +263,7 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
   const displayMarkets = liveMarkets.length > 0 ? liveMarkets : data?.markets || [];
 
   const metrics: AdminMetrics | null = useMemo(() => {
-    if (!data) return null;
+    if (!data) return dashboard?.metrics ?? null;
     const users = data.users;
     const totalMain = users.reduce((s, u) => s + Number(u.main_balance || 0), 0);
     const totalClaimable = users.reduce((s, u) => s + Number(u.claimable_balance || 0), 0);
@@ -276,7 +321,7 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
       pendingReferrals,
       totalPendingQueue,
     };
-  }, [data]);
+  }, [data, dashboard]);
 
   const filteredUsers = useMemo(() => {
     if (!data) return [];
@@ -589,12 +634,29 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const supportUnread = liveSupportUnread ?? data?.supportUnreadCount ?? 0;
+  const supportUnread = liveSupportUnread ?? data?.supportUnreadCount ?? dashboard?.supportUnreadCount ?? 0;
+
+  // Prefer the freshly loaded full ledger once available; until then the lightweight
+  // dashboard payload drives the Executive Dashboard without waiting for every admin row.
+  const dashboardSnapshot = useMemo<AdminDashboardData | null>(() => {
+    if (data && metrics && data.projectSummary) {
+      return {
+        metrics,
+        registeredAccounts: data.users.length,
+        activeP2pOffersCount: data.p2pOffers.filter((o) => o.status === 'ACTIVE').length,
+        projectSummary: data.projectSummary,
+        platformSettings: data.platformSettings,
+        supportUnreadCount: supportUnread,
+        recentTransactions: data.transactions.slice(0, 8),
+      };
+    }
+    return dashboard;
+  }, [data, metrics, dashboard, supportUnread]);
 
   useEffect(() => {
     if (!onBadgesChange) return;
     onBadgesChange({
-      USERS: { count: data?.users.length },
+      USERS: { count: data?.users.length ?? dashboard?.registeredAccounts },
       DEPOSITS: {
         count: metrics?.pendingDepositsCount || undefined,
         urgent: (metrics?.pendingDepositsCount || 0) > 0,
@@ -624,6 +686,7 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
   }, [
     onBadgesChange,
     data?.users.length,
+    dashboard?.registeredAccounts,
     metrics?.pendingDepositsCount,
     metrics?.pendingWithdrawalsCount,
     metrics?.disputedP2p,
@@ -640,7 +703,7 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
     setTab('USERS');
   };
 
-  if (loading && !data) {
+  if (loading && !dashboard && !data) {
     return (
       <div className="space-y-5">
         <div className="h-9 w-72 bg-slate-100 rounded-lg animate-pulse" />
@@ -665,7 +728,10 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
         <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
-            onClick={() => loadOverview()}
+            onClick={() => {
+              loadDashboard(true).catch(() => {});
+              loadOverview();
+            }}
             disabled={refreshing}
             className="inline-flex items-center gap-2 h-9 px-3.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors whitespace-nowrap shrink-0"
           >
@@ -731,10 +797,30 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
             </div>
           )}
 
-          {tab === 'DASHBOARD' && data && metrics && (
+          <Suspense
+            fallback={
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-5 animate-pulse">
+                <div className="h-4 w-48 bg-slate-200 rounded" />
+                <div className="mt-4 h-64 bg-white/70 rounded-lg" />
+              </div>
+            }
+          >
+          {tab !== 'DASHBOARD' && !data && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-5 animate-pulse">
+              <div className="h-4 w-52 bg-slate-200 rounded" />
+              <div className="mt-4 h-64 bg-white/70 rounded-lg" />
+              <p className="mt-3 text-xs text-slate-500">Loading full admin ledger…</p>
+            </div>
+          )}
+
+          {tab === 'DASHBOARD' && dashboardSnapshot && (
             <AdminDashboardTab
-              data={data}
-              metrics={metrics}
+              projectSummary={dashboardSnapshot.projectSummary}
+              platformSettings={dashboardSnapshot.platformSettings}
+              registeredAccounts={dashboardSnapshot.registeredAccounts}
+              activeP2pOffersCount={dashboardSnapshot.activeP2pOffersCount}
+              recentTransactions={dashboardSnapshot.recentTransactions}
+              metrics={dashboardSnapshot.metrics}
               spotStats={spotStats}
               displayMarkets={displayMarkets}
               supportUnread={supportUnread}
@@ -956,6 +1042,7 @@ export const AdminConsoleView: React.FC<AdminConsoleViewProps> = ({
               }}
             />
           )}
+          </Suspense>
       </div>
 
       <AdminModals
