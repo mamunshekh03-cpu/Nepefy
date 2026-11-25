@@ -477,23 +477,29 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                       </div>
                     </div>
 
-                    {/* Clear Price Breakdown: Per Share Price, Lot Price, Network Fee */}
+                    {/* Clear Price Breakdown: Per Share, Lot Qty, Lot Price, Network Fee */}
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
                       <div className="flex justify-between items-center text-slate-600">
-                        <span>Per Share Price</span>
-                        <span className="font-mono-tabular font-semibold text-slate-900">${formatUsd(lotPrice)}</span>
+                        <span>Per Share</span>
+                        <span className="font-mono-tabular font-semibold text-slate-900">$ {formatUsd(lotPrice)}</span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600">
-                        <span>Lot Price ({lots} × ${formatUsd(lotPrice)})</span>
-                        <span className="font-mono-tabular font-semibold text-slate-900">${formatUsd(principal)}</span>
+                        <span>Lot Qty</span>
+                        <span className="font-mono-tabular font-semibold text-slate-900">{lots}</span>
                       </div>
                       <div className="flex justify-between items-center text-slate-600">
-                        <span>Network Fee ({lots} × ${formatUsd(feePerShare)})</span>
-                        <span className="font-mono-tabular font-semibold text-slate-700">${formatUsd(networkFee)}</span>
+                        <span>Lot Price</span>
+                        <span className="font-mono-tabular font-semibold text-slate-900">
+                          <span className="text-slate-500 font-normal">${formatUsd(lotPrice)} × {lots} = </span>$ {formatUsd(principal)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>Network Fee {lots > 1 ? `(${lots} × $${formatUsd(feePerShare)})` : ''}</span>
+                        <span className="font-mono-tabular font-semibold text-slate-700">$ {formatUsd(networkFee)}</span>
                       </div>
                       <div className="border-t border-slate-200 pt-2 flex justify-between items-center font-bold text-slate-900">
                         <span>Total Payable</span>
-                        <span className="font-mono-tabular text-base text-blue-600">${formatUsd(totalCost)}</span>
+                        <span className="font-mono-tabular text-base text-blue-600">$ {formatUsd(totalCost)}</span>
                       </div>
                     </div>
 
