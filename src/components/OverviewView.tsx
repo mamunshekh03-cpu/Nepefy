@@ -826,154 +826,115 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         </div>
       )}
 
-      {/* Portfolio Equity Hero — Staking Vaults slate + emerald palette */}
+      {/* Portfolio Equity Hero — compact layout inspired by sample */}
       <section className="rounded-xl border border-slate-800 bg-[#0F172A] text-white overflow-hidden ring-1 ring-emerald-500/10">
-        {/* Top Row: Compact Hero Equity + PnL Metrics */}
-        <div className="px-5 py-4 lg:px-6 lg:py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="space-y-3">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">Overview</h1>
-              <div className="mt-0.5 text-[10px] text-slate-400 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                <span>
-                  Account ID:{' '}
-                  <span className="font-mono-tabular font-medium text-slate-200">{accountId}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopyId}
-                  aria-label="Copy Account ID"
-                  title="Copy Account ID"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
-                >
-                  {copiedId ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                </button>
-                <span aria-hidden="true">·</span>
-                <span>{user.email}</span>
-                {countryShortCode && (
-                  <>
-                    <span aria-hidden="true">·</span>
-                    <span
-                      title={user.country}
-                      className="font-mono-tabular font-medium text-slate-200"
+        <div className="px-5 py-4 lg:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h1 className="text-2xl font-bold tracking-tight text-white">Overview</h1>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-400">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span>Account ID:</span>
+                    <span className="font-mono-tabular font-medium text-slate-200">{accountId}</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyId}
+                      aria-label="Copy Account ID"
+                      title="Copy Account ID"
+                      className="inline-flex items-center text-slate-400 hover:text-emerald-400 transition-colors"
                     >
-                      {countryShortCode}
-                    </span>
-                  </>
-                )}
-                <span aria-hidden="true">·</span>
-                {isVerified ? (
-                  <span className="inline-flex items-center gap-1 font-medium text-emerald-400 whitespace-nowrap">
-                    <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                    <span>Verified</span>
+                      {copiedId ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
                   </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('profile')}
-                    title="Complete account verification in Profile & KYC"
-                    className="inline-flex items-center gap-1 font-medium text-amber-300 hover:text-amber-200 hover:underline transition-colors cursor-pointer whitespace-nowrap"
-                  >
-                    <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-                    <span>Unverified</span>
-                  </button>
-                )}
+                  <span className="text-slate-600" aria-hidden="true">·</span>
+                  <span className="truncate max-w-[220px] sm:max-w-none">{user.email}</span>
+                  {isVerified ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-emerald-400 whitespace-nowrap">
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                      <span>Verified</span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('profile')}
+                      title="Complete account verification in Profile & KYC"
+                      className="inline-flex items-center gap-1 font-medium text-amber-300 hover:text-amber-200 hover:underline transition-colors whitespace-nowrap"
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                      <span>Unverified</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>Estimated Total Equity</span>
-              </div>
-            <div className="flex flex-wrap items-baseline gap-2.5">
-              <span className="text-3xl lg:text-4xl font-bold tracking-tight font-mono-tabular text-white">
-                ${formatUsd(totalEquity)}
-              </span>
-              {countryShortCode && countryShortCode !== 'USD' && (
-                <span className="text-xs font-mono-tabular text-slate-400">
-                  ≈ {formatFiatAmount(totalEquity * getCurrencyMeta(countryShortCode).referenceRatePerUsdt, countryShortCode)} {countryShortCode}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              <span className="text-slate-400">Today&apos;s PnL</span>
-              <span
-                className={`inline-flex items-center gap-1 font-semibold font-mono-tabular ${
-                  todayPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                }`}
-              >
-                {todayPnl >= 0 ? (
-                  <TrendingUp className="w-3.5 h-3.5" />
-                ) : (
-                  <TrendingDown className="w-3.5 h-3.5" />
-                )}
-                <span>
-                  {formatSignedUsd(todayPnl)} ({todayPnlPct >= 0 ? '+' : ''}
-                  {todayPnlPct.toFixed(2)}%)
-                </span>
-              </span>
-            </div>
-          </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:border-l lg:border-slate-800 lg:pl-5">
-            <div>
-              <div className="text-[11px] font-medium text-slate-400">Unrealized PnL</div>
-              <div
-                className={`mt-1 text-sm font-semibold font-mono-tabular ${
-                  unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                }`}
-              >
-                {formatSignedUsd(unrealizedPnl)}
+              <div className="mt-3">
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Estimated Total Equity</span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-1">
+                  <span className="text-3xl lg:text-4xl font-bold tracking-tight font-mono-tabular text-white">
+                    ${formatUsd(totalEquity)}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 pb-1 text-sm font-semibold font-mono-tabular ${
+                      todayPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
+                  >
+                    {todayPnl >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                    <span>
+                      {formatSignedUsd(todayPnl)} ({todayPnlPct >= 0 ? '+' : ''}
+                      {todayPnlPct.toFixed(2)}%)
+                    </span>
+                  </span>
+                </div>
               </div>
             </div>
-            <div>
-              <div className="text-[11px] font-medium text-slate-400">Realized Today</div>
-              <div
-                className={`mt-1 text-sm font-semibold font-mono-tabular ${
-                  cleanRealizedTodayPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                }`}
-              >
-                {formatSignedUsd(cleanRealizedTodayPnl)}
+
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 lg:min-w-[360px] lg:border-l lg:border-slate-800 lg:pl-6">
+              <div>
+                <div className="text-[11px] font-medium text-slate-400">Unrealized PnL</div>
+                <div className={`mt-1 text-sm font-semibold font-mono-tabular ${unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {formatSignedUsd(unrealizedPnl)}
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-[11px] font-medium text-slate-400">Open Positions</div>
-              <div className="mt-1 text-sm font-semibold font-mono-tabular text-white">
-                ${formatUsd(totalOpenExposure)}
+              <div>
+                <div className="text-[11px] font-medium text-slate-400">Escrow &amp; Withdrawal Hold</div>
+                <div className="mt-1 text-sm font-semibold font-mono-tabular text-white">
+                  ${formatUsd(user.locked_balance)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-medium text-slate-400">Realized Today</div>
+                <div className={`mt-1 text-sm font-semibold font-mono-tabular ${cleanRealizedTodayPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {formatSignedUsd(cleanRealizedTodayPnl)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-medium text-slate-400">Open Positions</div>
+                <div className="mt-1 text-sm font-semibold font-mono-tabular text-white">
+                  ${formatUsd(totalOpenExposure)}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Row: Compact 5-Column Account Balances */}
-        <div className="border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-800">
-          <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
-            <div className="flex items-center gap-2 min-h-[32px] text-xs font-medium text-slate-400">
-              <CryptoIcon symbol="USDT" className="w-6 h-6" />
+        <div className="border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-800">
+          <div className="px-5 py-3 lg:px-6 space-y-1 transition-colors hover:bg-slate-800/30">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
+              <CryptoIcon symbol="USDT" className="w-5 h-5" />
               <span>Main Balance</span>
             </div>
-            <div className="text-xl font-bold font-mono-tabular text-white">
-              ${formatUsd(user.main_balance)}
-            </div>
+            <div className="text-xl font-bold font-mono-tabular text-white">${formatUsd(user.main_balance)}</div>
             <div className="text-xs text-slate-400">Available for Spot, P2P &amp; Withdrawals</div>
           </div>
 
-          <div className="px-5 py-4 space-y-1 bg-slate-800/20 transition-colors hover:bg-slate-800/40">
-            <div className="flex items-center justify-between gap-2 min-h-[32px] text-xs">
-              <span className="font-medium text-slate-400">
-                {activeStakedPrincipal > 0 ? 'Staking & Profit' : 'Profit Balance'}
-              </span>
-              <button
-                type="button"
-                onClick={() => onNavigate('staking')}
-                className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium whitespace-nowrap"
-              >
-                Vaults →
-              </button>
+          <div className="px-5 py-3 lg:px-6 space-y-1 bg-slate-800/20 transition-colors hover:bg-slate-800/40">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="font-medium text-slate-400">{activeStakedPrincipal > 0 ? 'Staking & Profit' : 'Profit Balance'}</span>
+              <button type="button" onClick={() => onNavigate('staking')} className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium whitespace-nowrap">Vaults →</button>
             </div>
             <div className="text-xl font-bold font-mono-tabular text-emerald-400">
               ${formatUsd(activeStakedPrincipal + Number(user.profit_balance || 0))}
@@ -985,42 +946,28 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             </div>
           </div>
 
-          <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
-            <div className="flex items-center justify-between gap-2 min-h-[32px] text-xs">
+          <div className="px-5 py-3 lg:px-6 space-y-1 transition-colors hover:bg-slate-800/30">
+            <div className="flex items-center justify-between gap-2 text-xs">
               <span className="font-medium text-slate-400">Claimable Wallet</span>
+              {user.claimable_balance > 0 && (
+                <button
+                  onClick={handleClaim}
+                  disabled={claiming}
+                  className="h-7 px-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 text-xs font-semibold rounded-md transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                >
+                  <ArrowDownToLine className="w-3 h-3" />
+                  <span>{claiming ? 'Claiming...' : 'Claim'}</span>
+                </button>
+              )}
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-xl font-bold font-mono-tabular text-white">
-                ${formatUsd(user.claimable_balance)}
-              </div>
-              <button
-                onClick={handleClaim}
-                disabled={claiming || user.claimable_balance <= 0}
-                className="h-7 px-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-500 disabled:border disabled:border-slate-700 text-slate-950 text-xs font-semibold rounded-md transition-colors inline-flex items-center gap-1 whitespace-nowrap shrink-0"
-              >
-                <ArrowDownToLine className="w-3 h-3" />
-                <span>{claiming ? 'Claiming...' : 'Claim'}</span>
-              </button>
-            </div>
+            <div className="text-xl font-bold font-mono-tabular text-white">${formatUsd(user.claimable_balance)}</div>
             <div className="text-xs text-slate-400">Transfer rewards to Main Balance</div>
           </div>
 
-          <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
-            <div className="flex items-center min-h-[32px] text-xs font-medium text-slate-400">Escrow &amp; Withdrawal Hold</div>
-            <div className="text-xl font-bold font-mono-tabular text-white">
-              ${formatUsd(user.locked_balance)}
-            </div>
-            <div className="text-xs text-slate-400">Locked in pending withdrawals or P2P</div>
-          </div>
-
-          <div className="px-5 py-4 space-y-1 transition-colors hover:bg-slate-800/30">
-            <div className="flex items-center min-h-[32px] text-xs font-medium text-slate-400">Spot Coin Holdings</div>
-            <div className="text-xl font-bold font-mono-tabular text-white">
-              ${formatUsd(portfolioValue + escrowedLimitSellValue)}
-            </div>
-            <div className="text-xs text-slate-400">
-              {holdings.length} active asset{holdings.length === 1 ? '' : 's'} marked to live feed
-            </div>
+          <div className="px-5 py-3 lg:px-6 space-y-1 transition-colors hover:bg-slate-800/30">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-400">Spot Coin Holdings</div>
+            <div className="text-xl font-bold font-mono-tabular text-white">${formatUsd(portfolioValue + escrowedLimitSellValue)}</div>
+            <div className="text-xs text-slate-400">{holdings.length} active asset{holdings.length === 1 ? '' : 's'} marked to live feed</div>
           </div>
         </div>
       </section>
