@@ -464,10 +464,10 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         </div>
 
         {/* Hero Dark Wallet Card (Center Screen Pattern) */}
-        <section className="rounded-xl border border-slate-800 bg-[#0F172A] text-white p-5 space-y-5">
+        <section className="rounded-xl border border-slate-800 bg-[#0F172A] text-white p-5 space-y-5 ring-1 ring-emerald-500/10">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-medium text-slate-300 truncate">Main Wallet</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400 truncate">Main Wallet</span>
               <button
                 type="button"
                 onClick={() => setHideBalance((v) => !v)}
@@ -505,13 +505,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </div>
 
           <div className="space-y-1.5">
-            <div className="text-[32px] font-bold tracking-tight font-mono-tabular leading-none">
+            <div className="text-[32px] font-bold tracking-tight font-mono-tabular leading-none text-emerald-400">
               {hideBalance ? '••••••' : `$${formatUsd(totalEquity)}`}
             </div>
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
               <span
                 className={`inline-flex items-center gap-1 font-semibold font-mono-tabular ${
-                  todayPnl >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'
+                  todayPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
                 {todayPnl >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
@@ -548,7 +548,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                   onClick={() => onNavigate(act.tab)}
                   className="flex flex-col items-center gap-1.5 group"
                 >
-                  <span className="w-12 h-12 rounded-full bg-slate-800 group-active:scale-95 transition-transform flex items-center justify-center text-white border border-slate-700">
+                  <span className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 group-active:scale-95 transition-all flex items-center justify-center text-emerald-300 border border-slate-700">
                     <Icon className="w-5 h-5" />
                   </span>
                   <span className="text-xs font-medium text-slate-200">{act.label}</span>
@@ -562,7 +562,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('funding')}
-              className="rounded-xl bg-white/5 hover:bg-white/10 px-2.5 py-2 transition-colors"
+              className="rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 px-2.5 py-2 transition-colors"
             >
               <div className="text-[10px] text-slate-400">Main USDT</div>
               <div className="text-xs font-bold font-mono-tabular text-white mt-0.5 truncate">
@@ -572,17 +572,17 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('staking')}
-              className="rounded-xl bg-white/5 hover:bg-white/10 px-2.5 py-2 transition-colors"
+              className="rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 px-2.5 py-2 transition-colors"
             >
               <div className="text-[10px] text-slate-400">Staked &amp; Profit</div>
-              <div className="text-xs font-bold font-mono-tabular text-[#0ECB81] mt-0.5 truncate">
+              <div className="text-xs font-bold font-mono-tabular text-emerald-400 mt-0.5 truncate">
                 {hideBalance ? '••••' : `$${formatUsd(activeStakedPrincipal + Number(user.profit_balance || 0))}`}
               </div>
             </button>
             <button
               type="button"
               onClick={() => onNavigate('spot')}
-              className="rounded-xl bg-white/5 hover:bg-white/10 px-2.5 py-2 transition-colors"
+              className="rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 px-2.5 py-2 transition-colors"
             >
               <div className="text-[10px] text-slate-400">Spot Value</div>
               <div className="text-xs font-bold font-mono-tabular text-white mt-0.5 truncate">
