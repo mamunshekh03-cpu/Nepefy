@@ -698,22 +698,22 @@ export const PresaleView: React.FC<PresaleViewProps> = ({ user, onRefresh }) => 
                   {/* Share Specs Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50/60">
                     <div className="px-3.5 py-3 text-center">
-                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Share Price</div>
-                      <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">${formatUsd(lotPrice)}</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Lot Size</div>
+                      <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-900">{lotSize} Shares</div>
                     </div>
                     <div className="px-3.5 py-3 text-center">
-                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">1 Lot ({lotSize} Shares)</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Lot Price</div>
                       <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-blue-600">
                         ${formatUsd(oneLotPrice)}
                       </div>
                     </div>
                     <div className="px-3.5 py-3 text-center">
-                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Win Payout</div>
-                      <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-emerald-600">+${formatUsd(r.projected_win_payout)}</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Estimate Win Rate</div>
+                      <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-emerald-600">1 Lot ${formatUsd(r.projected_win_payout)}</div>
                     </div>
                     <div className="px-3.5 py-3 text-center">
-                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Network Fee</div>
-                      <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-700">${formatUsd(feePerShare)}/lot</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">Supply Lot Size</div>
+                      <div className="mt-0.5 text-sm font-extrabold font-mono-tabular text-slate-700">{r.total_lots.toLocaleString()}</div>
                     </div>
                   </div>
 

@@ -6863,6 +6863,7 @@ async function startServer() {
       lot_size,
       issue_price,
       lot_price,
+      one_lot_price,
       tokens_per_lot,
       projected_win_payout,
       total_lots,
@@ -6875,8 +6876,12 @@ async function startServer() {
 
     const cleanSym = String(token_symbol || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
     const cleanName = String(token_name || '').trim().slice(0, 80);
-    const numLotPrice = Number(lot_price);
-    const numTokensPerLot = Number(tokens_per_lot);
+    const numTokensPerLot = Math.floor(Number(tokens_per_lot || lot_size));
+    const parsedOneLotPrice = Number(one_lot_price);
+    const numLotPrice =
+      Number.isFinite(parsedOneLotPrice) && parsedOneLotPrice > 0 && Number.isFinite(numTokensPerLot) && numTokensPerLot > 0
+        ? Number((parsedOneLotPrice / numTokensPerLot).toFixed(6))
+        : Number(lot_price);
     const numWinPayout = Number(projected_win_payout);
     const numTotalLots = Math.floor(Number(total_lots));
     const initialStatus = status === 'UPCOMING' ? 'UPCOMING' : 'OPEN';
