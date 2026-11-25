@@ -464,7 +464,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         </div>
 
         {/* Hero Dark Wallet Card (Center Screen Pattern) */}
-        <section className="rounded-3xl bg-[#11161F] text-white p-5 space-y-5">
+        <section className="rounded-xl border border-slate-800 bg-[#0F172A] text-white p-5 space-y-5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-xs font-medium text-slate-300 truncate">Main Wallet</span>
@@ -483,7 +483,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                 type="button"
                 onClick={handleCopyId}
                 title={`Copy UID: ${accountId}`}
-                className="h-8 px-2.5 rounded-lg bg-[#1C2331] hover:bg-[#252E40] inline-flex items-center gap-1.5 text-[11px] font-mono-tabular text-slate-200 transition-colors"
+                className="h-8 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 inline-flex items-center gap-1.5 text-[11px] font-mono-tabular text-slate-200 transition-colors"
               >
                 {copiedId ? (
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -548,7 +548,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                   onClick={() => onNavigate(act.tab)}
                   className="flex flex-col items-center gap-1.5 group"
                 >
-                  <span className="w-12 h-12 rounded-full bg-[#1E2532] group-active:scale-95 transition-transform flex items-center justify-center text-white border border-white/10">
+                  <span className="w-12 h-12 rounded-full bg-slate-800 group-active:scale-95 transition-transform flex items-center justify-center text-white border border-slate-700">
                     <Icon className="w-5 h-5" />
                   </span>
                   <span className="text-xs font-medium text-slate-200">{act.label}</span>
@@ -558,7 +558,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </div>
 
           {/* Compact Balance Breakdown Footer Strip */}
-          <div className="pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-left">
+          <div className="pt-3 border-t border-slate-800 grid grid-cols-3 gap-2 text-left">
             <button
               type="button"
               onClick={() => onNavigate('funding')}
