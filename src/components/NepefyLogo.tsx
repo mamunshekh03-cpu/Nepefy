@@ -23,7 +23,7 @@ export const NepefyMark: React.FC<NepefyMarkProps> = ({
       key={loading ? 'loading' : `mark-${cycleKey}`}
       style={{ width: size, height: size }}
       className={`relative inline-flex items-center justify-center shrink-0 nepefy-mark-box ${
-        loading ? 'nepefy-loading-box' : 'nepefy-animate-mark'
+        loading ? 'nepefy-loading-box' : ''
       } ${className}`}
     >
       <svg
@@ -31,6 +31,7 @@ export const NepefyMark: React.FC<NepefyMarkProps> = ({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-full block"
+        shapeRendering="geometricPrecision"
         aria-hidden="true"
       >
         <defs>
@@ -46,7 +47,7 @@ export const NepefyMark: React.FC<NepefyMarkProps> = ({
           strokeWidth="6.4"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={loading ? 'nepefy-loading-outer' : 'nepefy-draw-outer'}
+          className={loading ? 'nepefy-loading-outer' : ''}
         />
         <path
           d="M37 11V37L28 28"
@@ -54,7 +55,7 @@ export const NepefyMark: React.FC<NepefyMarkProps> = ({
           strokeWidth="6.4"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={loading ? 'nepefy-loading-inner' : 'nepefy-draw-inner'}
+          className={loading ? 'nepefy-loading-inner' : ''}
         />
       </svg>
     </span>

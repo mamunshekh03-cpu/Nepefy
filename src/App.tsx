@@ -851,6 +851,14 @@ export default function App() {
           </div>
 
           <div className="hidden lg:flex flex-1 min-w-0 items-center">
+            <button
+              type="button"
+              onClick={() => setActiveTab(isAdmin ? 'admin' : 'overview')}
+              className="mr-3 flex shrink-0 items-center justify-center rounded-md pr-3 border-r border-slate-200"
+              aria-label="Nepefy home"
+            >
+              <NepefyMark size={28} />
+            </button>
             <LiveCoinTicker
               markets={markets}
               onSelectCoin={(symbol) => {
